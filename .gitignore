@@ -1,0 +1,46 @@
+# Environment variables
+.env
+.env.local
+frontend/.env.local
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Convex
+convex/_generated/
+.convex/
+
+# Old backend (replaced with Convex)
+backend/
+
+# Build outputs
+dist/
+build/
+frontend/dist/
+frontend/build/
+
+# Database (old - replaced with Convex)
+data/
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+tmp/
+temp/
+*.tmp
