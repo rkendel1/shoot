@@ -185,8 +185,14 @@ export const processMessage = action({
   handler: async (ctx, args) => {
     const lowerMessage = args.message.toLowerCase();
 
-    // Intent detection
-    if (detectUploadIntent(lowerMessage)) {
+    // Intent detection - prioritize specific intents first
+    if (detectBuildIntent(lowerMessage) && args.currentSpecId) {
+      return await handleBuildCustomerApp(ctx, args);
+    } else if (detectAddFeatureIntent(lowerMessage)) {
+      return await handleAddFeature(ctx, args);
+    } else if (detectRefineIntent(lowerMessage)) {
+      return await handleRefineUI(ctx, args);
+    } else if (detectUploadIntent(lowerMessage)) {
       return handleUploadIntent(args.message, args.currentSpecId);
     } else if (detectGenerateIntent(lowerMessage)) {
       return await handleGenerateIntent(ctx, args.message, args.currentSpecId);
@@ -209,6 +215,18 @@ function detectUploadIntent(message: string): boolean {
 
 function detectGenerateIntent(message: string): boolean {
   return /generate|create|build|make.*app|code/.test(message);
+}
+
+function detectBuildIntent(message: string): boolean {
+  return /build.*dashboard|build.*for customers|build.*beautiful|create.*ui|make.*frontend/.test(message);
+}
+
+function detectRefineIntent(message: string): boolean {
+  return /make.*more|add.*to|change.*color|refine|improve|update|modify/.test(message);
+}
+
+function detectAddFeatureIntent(message: string): boolean {
+  return /add.*feature|add.*search|add.*filter|add.*cart|add.*auth/.test(message);
 }
 
 function detectAnalyzeIntent(message: string): boolean {
@@ -541,4 +559,51 @@ ${currentSpecId ? `The user is currently working with a spec.` : "No spec is cur
       ],
     };
   }
+}
+
+// New: Handle building beautiful customer-facing apps
+async function handleBuildCustomerApp(ctx: any, args: any) {
+  if (!args.currentSpecId) {
+    return {
+      message: `I'd love to build a beautiful customer-facing app! But first, I need an API spec to work with.\n\nLet's upload one now.`,
+      suggestions: [
+        "Upload a spec",
+        "Show me an example",
+      ],
+    };
+  }
+
+  const spec = await ctx.runQuery(api.specs.getSpec, { id: args.currentSpecId });
+
+  return {
+    message: `🎨 Perfect! I'll build a beautiful, customer-ready app for **"${spec.name}"**.\n\nI'll:\n✨ Design a modern, professional UI\n🎯 Select the right endpoints\n⚡ Make it fully functional\n📱 Ensure it's responsive\n🚀 Make it deployment-ready\n\n**Building now...** This will take a moment as I craft something beautiful!`,
+    action: "building_customer_app",
+    data: {
+      specId: args.currentSpecId,
+      description: args.message,
+    },
+  };
+}
+
+// New: Handle adding features to existing apps
+async function handleAddFeature(ctx: any, args: any) {
+  // This would need additional context about which app to modify
+  return {
+    message: `I can add that feature! Which app would you like me to update?\n\nYou can say:\n- "Add it to my latest app"\n- "Add it to [app name]"\n- Or select an app from the Generated Apps tab`,
+    suggestions: [
+      "Add to latest app",
+      "Show my apps",
+    ],
+  };
+}
+
+// New: Handle UI refinement requests
+async function handleRefineUI(ctx: any, args: any) {
+  return {
+    message: `I can refine the UI! Which app should I update?\n\nYou can:\n- Select an app from the Generated Apps tab\n- Say "refine my latest app"\n- Tell me the app name`,
+    suggestions: [
+      "Refine latest app",
+      "Show my apps",
+    ],
+  };
 }
