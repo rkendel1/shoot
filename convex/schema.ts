@@ -74,4 +74,31 @@ export default defineSchema({
   })
     .index("by_conversation", ["conversationId"])
     .index("by_creation_time", ["_creationTime"]),
+
+  // AI-Generated Insights and Suggestions
+  insights: defineTable({
+    specId: v.id("apiSpecs"),
+    insights: v.string(), // JSON stringified AI analysis
+    createdAt: v.number(),
+  }).index("by_spec", ["specId"]),
+
+  // Saved Workflows
+  workflows: defineTable({
+    specId: v.id("apiSpecs"),
+    name: v.string(),
+    description: v.string(),
+    steps: v.string(), // JSON stringified workflow steps
+    complexity: v.string(),
+    code: v.optional(v.string()), // JSON stringified code implementations
+  }).index("by_spec", ["specId"]),
+
+  // Remixes - Creative combinations
+  remixes: defineTable({
+    specId: v.id("apiSpecs"),
+    name: v.string(),
+    description: v.string(),
+    innovation: v.string(),
+    endpointsUsed: v.string(), // JSON stringified array
+    implementation: v.string(), // JSON stringified implementation details
+  }).index("by_spec", ["specId"]),
 });

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMutation } from 'convex/react';
+import { useMutation, useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
+import { useAppContext } from '../App';
 import './Chat.css';
 
 interface ChatMessage {
@@ -18,31 +19,37 @@ export const Chat: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const { selectedSpecId } = useAppContext();
   const sendMessageMutation = useMutation(api.chat.sendMessage);
 
   useEffect(() => {
     // Add welcome message
+    const welcomeMessage = selectedSpecId 
+      ? `# Welcome back! 🎯\n\nYou have a spec selected. I can help you:\n\n- 🧪 Test endpoints in the playground\n- 🚀 Generate apps and components\n- 💡 Get AI suggestions for creative uses\n- 🔄 Create workflows and remixes\n- ✨ Request changes to existing apps\n\nWhat would you like to do?`
+      : `# Welcome to Shoot! 🚀\n\nI'm your AI assistant for building apps from API specifications. I can help you:\n\n- 📤 Upload and parse API specs (OpenAPI, Swagger)\n- 🔍 Analyze APIs and detect patterns\n- 🛠️ Generate production-ready applications\n- 💬 Guide you through the entire process\n\nJust tell me what you'd like to do, or try one of the suggestions below!`;
+
     setMessages([{
       role: 'assistant',
-      content: `# Welcome to Shoot! 🚀
-
-I'm your AI assistant for building apps from API specifications. I can help you:
-
-- 📤 Upload and parse API specs (OpenAPI, Swagger)
-- 🔍 Analyze APIs and detect patterns
-- 🛠️ Generate production-ready applications
-- 💬 Guide you through the entire process
-
-Just tell me what you'd like to do, or try one of the suggestions below!`,
+      content: welcomeMessage,
       timestamp: Date.now(),
     }]);
 
-    setSuggestions([
-      'Upload an API spec',
-      'Show me an example',
-      'What can you do?',
-    ]);
-  }, []);
+    if (selectedSpecId) {
+      setSuggestions([
+        '💡 Show me AI suggestions for this API',
+        '🚀 Generate a smart app',
+        '🔄 Create a workflow',
+        '✨ Suggest creative remixes',
+        '🧪 Test in playground',
+      ]);
+    } else {
+      setSuggestions([
+        'Upload an API spec',
+        'Show me an example',
+        'What can you do?',
+      ]);
+    }
+  }, [selectedSpecId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -71,6 +78,7 @@ Just tell me what you'd like to do, or try one of the suggestions below!`,
       const response = await sendMessageMutation({
         message: textToSend,
         conversationId,
+        specId: selectedSpecId,
       });
 
       if (!conversationId) {
@@ -116,7 +124,10 @@ Just tell me what you'd like to do, or try one of the suggestions below!`,
     <div className="chat-container">
       <div className="chat-header">
         <h1>🎯 Shoot - API Spec to App Generator</h1>
-        <p>Conversational AI-powered app builder with Convex</p>
+        <p>
+          Conversational AI-powered app builder with Convex
+          {selectedSpecId && <span className="context-badge">📌 Context Active</span>}
+        </p>
       </div>
 
       <div className="chat-messages">
@@ -168,7 +179,10 @@ Just tell me what you'd like to do, or try one of the suggestions below!`,
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Type your message... (Shift+Enter for new line)"
+          placeholder={selectedSpecId 
+            ? "Ask me anything about this API, request changes, or generate components..."
+            : "Type your message... (Shift+Enter for new line)"
+          }
           rows={3}
           disabled={loading}
         />
