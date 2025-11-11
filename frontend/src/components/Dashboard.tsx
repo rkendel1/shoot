@@ -7,6 +7,7 @@ import { SpecsList } from './SpecsList';
 import { AppsList } from './AppsList';
 import { CodeViewer } from './CodeViewer';
 import { ApiPlayground } from './ApiPlayground';
+import { ComponentSelector } from './ComponentSelector';
 import { Id } from '../../../convex/_generated/dataModel';
 import './Dashboard.css';
 
@@ -15,6 +16,7 @@ type View = 'chat' | 'specs' | 'apps' | 'playground';
 export const Dashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('chat');
   const [viewingApp, setViewingApp] = useState<Id<'generatedApps'> | undefined>();
+  const [selectorActive, setSelectorActive] = useState(false);
   const { selectedSpecId, setSelectedSpecId, selectedAppId, setSelectedAppId } = useAppContext();
 
   // Get current spec details for context display
@@ -39,6 +41,16 @@ export const Dashboard: React.FC = () => {
   const clearContext = () => {
     setSelectedSpecId(undefined);
     setSelectedAppId(undefined);
+  };
+
+  const handleElementSelect = (elementInfo: string) => {
+    // Navigate to chat and pass the element info
+    setCurrentView('chat');
+    // The Chat component will handle the element info insertion
+    // We'll need to create a context or callback to pass this info
+    console.log('Selected element:', elementInfo);
+    // For now, copy to clipboard as a fallback
+    navigator.clipboard.writeText(elementInfo);
   };
 
   const renderContent = () => {
@@ -75,6 +87,12 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="dashboard">
+      <ComponentSelector 
+        isActive={selectorActive}
+        onSelect={handleElementSelect}
+        onClose={() => setSelectorActive(false)}
+      />
+      
       {!viewingApp && (
         <div className="dashboard-sidebar">
           <div className="sidebar-header">
@@ -138,6 +156,13 @@ export const Dashboard: React.FC = () => {
           <div className="sidebar-footer">
             <div className="quick-actions">
               <h3>Quick Actions</h3>
+              <button
+                className="quick-action-btn selector-btn"
+                onClick={() => setSelectorActive(!selectorActive)}
+                title="Select component or CSS from the page"
+              >
+                🎯 Component Selector
+              </button>
               <button
                 className="quick-action-btn"
                 onClick={() => setCurrentView('chat')}
