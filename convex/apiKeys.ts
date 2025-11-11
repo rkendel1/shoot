@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 
 // Add an API key
 export const addApiKey = mutation({
@@ -9,7 +9,7 @@ export const addApiKey = mutation({
     keyValue: v.string(),
     description: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const id = await ctx.db.insert("apiKeys", args);
     return {
       id,
@@ -22,7 +22,7 @@ export const addApiKey = mutation({
 // Get API keys for a spec
 export const getApiKeys = query({
   args: { specId: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const keys = await ctx.db
       .query("apiKeys")
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
@@ -42,7 +42,7 @@ export const getApiKeys = query({
 // Delete an API key
 export const deleteApiKey = mutation({
   args: { id: v.id("apiKeys") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     await ctx.db.delete(args.id);
     return { success: true };
   },

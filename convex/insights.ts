@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 
 // Save AI-generated insights
@@ -7,7 +7,7 @@ export const saveInsights = mutation({
     specId: v.id("apiSpecs"),
     insights: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     // Delete old insights for this spec
     const oldInsights = await ctx.db
       .query("insights")
@@ -32,7 +32,7 @@ export const saveInsights = mutation({
 // Get insights for a spec
 export const getInsights = query({
   args: { specId: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const insights = await ctx.db
       .query("insights")
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
@@ -57,7 +57,7 @@ export const saveWorkflow = mutation({
     complexity: v.string(),
     code: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const id = await ctx.db.insert("workflows", args);
     return { id };
   },
@@ -66,7 +66,7 @@ export const saveWorkflow = mutation({
 // Get workflows for a spec
 export const getWorkflows = query({
   args: { specId: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const workflows = await ctx.db
       .query("workflows")
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
@@ -90,7 +90,7 @@ export const saveRemix = mutation({
     endpointsUsed: v.string(),
     implementation: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const id = await ctx.db.insert("remixes", args);
     return { id };
   },
@@ -99,7 +99,7 @@ export const saveRemix = mutation({
 // Get remixes for a spec
 export const getRemixes = query({
   args: { specId: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const remixes = await ctx.db
       .query("remixes")
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))

@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 
 // Update app with new code (for iterative modifications)
@@ -7,7 +7,7 @@ export const updateApp = mutation({
     id: v.id("generatedApps"),
     code: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     await ctx.db.patch(args.id, {
       code: args.code,
     });

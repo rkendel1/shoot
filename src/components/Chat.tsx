@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMutation } from 'convex/react';
+import { useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAppContext } from '../App';
 import { ComponentSelector } from './ComponentSelector';
@@ -22,7 +22,7 @@ export const Chat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { selectedSpecId } = useAppContext();
-  const sendMessageMutation = useMutation(api.chat.sendMessage);
+  const sendMessageAction = useAction(api.chat.sendMessage);
 
   useEffect(() => {
     // Add welcome message
@@ -77,7 +77,7 @@ export const Chat: React.FC = () => {
     setSuggestions([]);
 
     try {
-      const response: any = await sendMessageMutation({
+      const response: any = await sendMessageAction({
         message: textToSend,
         conversationId,
         specId: selectedSpecId,

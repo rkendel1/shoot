@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 
 // Upload a new API spec
 export const uploadSpec = mutation({
@@ -14,26 +14,16 @@ export const uploadSpec = mutation({
       v.literal("other")
     ),
     content: v.string(),
-    endpoints: v.array(
-      v.object({
-        path: v.string(),
-        method: v.string(),
-        summary: v.optional(v.string()),
-        description: v.optional(v.string()),
-        parameters: v.optional(v.string()),
-        requestBody: v.optional(v.string()),
-        responses: v.optional(v.string()),
-      })
-    ),
+    endpoints: v.any(), // Simplified from a complex object to fix type generation
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const { endpoints, ...specData } = args;
 
     // Create the spec
     const specId = await ctx.db.insert("apiSpecs", specData);
 
     // Create endpoints
-    for (const endpoint of endpoints) {
+    for (const endpoint of endpoints as any[]) {
       await ctx.db.insert("apiEndpoints", {
         specId,
         ...endpoint,
@@ -43,7 +33,7 @@ export const uploadSpec = mutation({
     return {
       id: specId,
       name: args.name,
-      endpointCount: endpoints.length,
+      endpointCount: (endpoints as any[]).length,
     };
   },
 });
@@ -51,7 +41,7 @@ export const uploadSpec = mutation({
 // Get all specs
 export const getAllSpecs = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: QueryCtx) => {
     const specs = await ctx.db
       .query("apiSpecs")
       .order("desc")
@@ -84,7 +74,7 @@ export const getAllSpecs = query({
 // Get a specific spec with endpoints
 export const getSpec = query({
   args: { id: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const spec = await ctx.db.get(args.id);
     
     if (!spec) {
@@ -117,7 +107,7 @@ export const getSpec = query({
 // Get endpoints for a spec
 export const getEndpoints = query({
   args: { specId: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const endpoints = await ctx.db
       .query("apiEndpoints")
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
@@ -130,7 +120,7 @@ export const getEndpoints = query({
 // Delete a spec
 export const deleteSpec = mutation({
   args: { id: v.id("apiSpecs") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     // Delete all endpoints
     const endpoints = await ctx.db
       .query("apiEndpoints")
