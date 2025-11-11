@@ -83,7 +83,7 @@ export const getSpec = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
 
-    // Return a plain object to avoid type generation issues with the spread operator
+    // Return a plain object to avoid type generation issues
     return {
       _id: spec._id,
       _creationTime: spec._creationTime,
