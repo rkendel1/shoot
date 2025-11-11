@@ -1,14 +1,14 @@
-import { action } from "./_generated/server";
+import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 // AI-powered flow and app suggestions
 export const suggestFlows = action({
   args: {
     specId: v.id("apiSpecs"),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -69,7 +69,7 @@ Return as JSON array of suggestions.`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       // Try to extract JSON
@@ -114,7 +114,7 @@ export const modifyComponent = action({
     currentCode: v.string(),
     modificationRequest: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args) => {
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -159,7 +159,7 @@ Return ONLY the modified code without explanations.`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const modifiedCode = data.choices[0].message.content;
 
       // Extract code from markdown if present
@@ -167,13 +167,13 @@ Return ONLY the modified code without explanations.`;
       const cleanCode = codeMatch ? codeMatch[1] : modifiedCode;
 
       // Update the app in database
-      const app = await ctx.runQuery(api.apps.getApp, { id: args.appId });
+      const app = await ctx.runQuery(internal.apps.getApp, { id: args.appId });
       const updatedCode = {
         ...app.code,
         [args.fileName]: cleanCode,
       };
 
-      await ctx.runMutation(api.apps.updateApp, {
+      await ctx.runMutation(internal.apps.updateApp, {
         id: args.appId,
         code: JSON.stringify(updatedCode),
       });
@@ -200,8 +200,8 @@ export const generateComponent = action({
     componentDescription: v.string(),
     framework: v.string(),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -254,7 +254,7 @@ Generate complete, working code.`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const generatedCode = data.choices[0].message.content;
 
       return {
@@ -277,8 +277,8 @@ export const analyzeApp = action({
   args: {
     appId: v.id("generatedApps"),
   },
-  handler: async (ctx, args) => {
-    const app = await ctx.runQuery(api.apps.getApp, { id: args.appId });
+  handler: async (ctx: ActionCtx, args) => {
+    const app = await ctx.runQuery(internal.apps.getApp, { id: args.appId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -337,7 +337,7 @@ Return as JSON array of objects with: title, description, priority (high/medium/
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       // Try to extract JSON

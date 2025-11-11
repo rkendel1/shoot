@@ -1,21 +1,21 @@
-import { action } from "./_generated/server";
+import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 // Comprehensive AI analysis of API capabilities and creative suggestions
 export const analyzeApiCapabilities = action({
   args: {
     specId: v.id("apiSpecs"),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
       return {
         success: false,
         message: "OpenAI API key required for AI suggestions",
-        basicSuggestions: generateBasicSuggestions(spec),
+        basicSuggestions: generateBasicSuggestions(),
       };
     }
 
@@ -99,7 +99,7 @@ Return ONLY valid JSON.`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       // Extract JSON
@@ -108,7 +108,7 @@ Return ONLY valid JSON.`;
         const analysis = JSON.parse(jsonMatch[0]);
         
         // Store insights for future use
-        await ctx.runMutation(api.insights.saveInsights, {
+        await ctx.runMutation(internal.insights.saveInsights, {
           specId: args.specId,
           insights: JSON.stringify(analysis),
         });
@@ -125,7 +125,7 @@ Return ONLY valid JSON.`;
       return {
         success: false,
         error: error.message,
-        basicSuggestions: generateBasicSuggestions(spec),
+        basicSuggestions: generateBasicSuggestions(),
       };
     }
   },
@@ -137,8 +137,8 @@ export const generateWorkflow = action({
     specId: v.id("apiSpecs"),
     goal: v.string(),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -211,7 +211,7 @@ Return JSON with:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -240,8 +240,8 @@ export const suggestApiExtensions = action({
     specId: v.id("apiSpecs"),
     focus: v.optional(v.string()), // Optional: "performance", "features", "security", etc.
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -302,7 +302,7 @@ Return as JSON array of suggestions.`;
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -331,8 +331,8 @@ export const generateRemix = action({
     specId: v.id("apiSpecs"),
     theme: v.optional(v.string()), // e.g., "social", "analytics", "automation"
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -398,7 +398,7 @@ Return JSON with:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
 
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -422,7 +422,7 @@ Return JSON with:
 });
 
 // Basic suggestions when AI is not available
-function generateBasicSuggestions(spec: any) {
+function generateBasicSuggestions() {
   const suggestions = {
     capabilities: ["API interaction", "Data management"],
     useCases: [

@@ -45,7 +45,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ appId, onClose }) => {
   const downloadAll = () => {
     // Download all files as individual downloads
     Object.entries(app.code).forEach(([filename, content]) => {
-      setTimeout(() => downloadFile(filename, content), 100);
+      setTimeout(() => downloadFile(filename, content as string), 100);
     });
   };
 

@@ -53,7 +53,7 @@ export const SpecsList: React.FC<SpecsListProps> = ({ onSelectSpec, selectedSpec
     <div className="specs-list">
       <h2>📋 Your API Specs ({specs.length})</h2>
       <div className="specs-grid">
-        {specs.map((spec) => (
+        {specs.map((spec: typeof specs[number]) => (
           <div
             key={spec.id}
             className={`spec-card ${selectedSpecId === spec.id ? 'selected' : ''}`}

@@ -1,6 +1,16 @@
-import { action } from "./_generated/server";
+import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
+
+interface StepResult {
+  step: number;
+  action: string;
+  endpoint: string;
+  status: "pending" | "success" | "error";
+  output: any | null;
+  error: string | null;
+  time: number;
+}
 
 // Intelligent app builder that selects endpoints and creates working functionality
 export const buildAppFromIntent = action({
@@ -9,8 +19,8 @@ export const buildAppFromIntent = action({
     intent: v.string(), // Natural language: "I want to build a pet adoption system"
     conversationId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -100,7 +110,7 @@ Return JSON:
         }),
       });
 
-      const analysisData = await analysisResponse.json();
+      const analysisData: any = await analysisResponse.json();
       const analysisContent = analysisData.choices[0].message.content;
       const jsonMatch = analysisContent.match(/\{[\s\S]*\}/);
       
@@ -172,7 +182,7 @@ Return as JSON:
         }),
       });
 
-      const codeData = await codeResponse.json();
+      const codeData: any = await codeResponse.json();
       const codeContent = codeData.choices[0].message.content;
       const codeJsonMatch = codeContent.match(/\{[\s\S]*\}/);
       
@@ -184,7 +194,7 @@ Return as JSON:
 
       // Step 3: Save the generated app
       const appName = `${analysis.workflow.name} - ${spec.name}`;
-      const appId = await ctx.runMutation(api.apps.generateApp, {
+      const appId = await ctx.runMutation(internal.apps.generateApp, {
         specId: args.specId,
         name: appName,
         description: `${analysis.understanding}\n\nEndpoints used: ${analysis.selectedEndpoints.map((e: any) => e.endpoint).join(', ')}`,
@@ -200,7 +210,7 @@ Return as JSON:
       });
 
       // Step 4: Save the workflow
-      await ctx.runMutation(api.insights.saveWorkflow, {
+      await ctx.runMutation(internal.insights.saveWorkflow, {
         specId: args.specId,
         name: analysis.workflow.name,
         description: analysis.workflow.description,
@@ -235,25 +245,25 @@ export const testWorkflow = action({
     workflowId: v.id("workflows"),
     testData: v.string(), // JSON string with test inputs
   },
-  handler: async (ctx, args) => {
-    const workflow = await ctx.runQuery(api.insights.getWorkflows, { 
-      specId: "dummy" as any // We'll get it from the workflow
+  handler: async (ctx: ActionCtx, args) => {
+    const allWorkflows = await ctx.runQuery(internal.insights.getWorkflows, { 
+      specId: "dummy" as any // This is a placeholder, we find the workflow by ID
     });
     
     // Find the specific workflow
-    const targetWorkflow = workflow.find((w: any) => w._id === args.workflowId);
+    const targetWorkflow = allWorkflows.find((w: any) => w._id === args.workflowId);
     if (!targetWorkflow) {
       return { success: false, error: "Workflow not found" };
     }
 
     const testInputs = JSON.parse(args.testData);
-    const results: any[] = [];
+    const results: StepResult[] = [];
     let previousOutput: any = null;
 
     try {
       // Execute each step in order
       for (const step of targetWorkflow.steps) {
-        const stepResult = {
+        const stepResult: StepResult = {
           step: step.stepNumber,
           action: step.action,
           endpoint: step.endpoint,
@@ -317,8 +327,8 @@ export const refineApp = action({
     appId: v.id("generatedApps"),
     refinement: v.string(), // "Add validation" or "Make it faster"
   },
-  handler: async (ctx, args) => {
-    const app = await ctx.runQuery(api.apps.getApp, { id: args.appId });
+  handler: async (ctx: ActionCtx, args) => {
+    const app = await ctx.runQuery(internal.apps.getApp, { id: args.appId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -326,7 +336,7 @@ export const refineApp = action({
     }
 
     try {
-      const metadata = app.metadata ? JSON.parse(app.metadata) : {};
+      const metadata = app.metadata || {};
       const selectedEndpoints = metadata.selectedEndpoints || [];
 
       const prompt = `Refine this application based on the user's request.
@@ -376,7 +386,7 @@ Return as JSON with updated files:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       
@@ -387,7 +397,7 @@ Return as JSON with updated files:
       const refinedCode = JSON.parse(jsonMatch[0]);
 
       // Update the app
-      await ctx.runMutation(api.appUpdates.updateApp, {
+      await ctx.runMutation(internal.appUpdates.updateApp, {
         id: args.appId,
         code: JSON.stringify(refinedCode.files),
       });

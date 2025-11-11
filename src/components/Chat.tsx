@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMutation, useAction } from 'convex/react';
+import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useAppContext } from '../App';
 import { ComponentSelector } from './ComponentSelector';
@@ -77,7 +77,7 @@ export const Chat: React.FC = () => {
     setSuggestions([]);
 
     try {
-      const response = await sendMessageMutation({
+      const response: any = await sendMessageMutation({
         message: textToSend,
         conversationId,
         specId: selectedSpecId,

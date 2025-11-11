@@ -1,6 +1,6 @@
-import { action } from "./_generated/server";
+import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 // Parse spec from URL or content
 export const parseSpec = action({
@@ -9,7 +9,7 @@ export const parseSpec = action({
     specUrl: v.optional(v.string()),
     name: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args) => {
     let specContent: string;
     let parsedSpec: any;
 
@@ -77,7 +77,7 @@ export const parseSpec = action({
       }
 
       // Store the spec
-      const result = await ctx.runMutation(api.specs.uploadSpec, {
+      const result = await ctx.runMutation(internal.specs.uploadSpec, {
         name: metadata.title,
         description: metadata.description,
         version: metadata.version,
@@ -107,9 +107,9 @@ export const generateAppCode = action({
     framework: v.string(),
     useAI: v.boolean(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args) => {
     try {
-      const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+      const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
       const endpoints = spec.endpoints;
 
       let generatedCode: { [filename: string]: string } = {};
@@ -128,7 +128,7 @@ export const generateAppCode = action({
       }
 
       // Store the generated app
-      const result = await ctx.runMutation(api.apps.generateApp, {
+      const result = await ctx.runMutation(internal.apps.generateApp, {
         specId: args.specId,
         name: `${spec.name} ${args.framework} App`,
         description: `Generated ${args.framework} application`,
@@ -201,7 +201,7 @@ Generate the main files needed for this application.`;
       }),
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     const generatedContent = data.choices[0].message.content;
 
     // Parse code blocks from response

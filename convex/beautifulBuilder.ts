@@ -1,6 +1,6 @@
-import { action } from "./_generated/server";
+import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 
 // Build beautiful, customer-ready frontend from natural language
 export const buildCustomerFacingApp = action({
@@ -9,8 +9,8 @@ export const buildCustomerFacingApp = action({
     userDescription: v.string(), // "Build a beautiful pet adoption dashboard with search and filters"
     conversationId: v.string(),
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -147,7 +147,7 @@ Return as JSON:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
       
       // Extract JSON
@@ -160,7 +160,7 @@ Return as JSON:
 
       // Save the app
       const appName = `${args.userDescription.split(' ').slice(0, 5).join(' ')} - Customer App`;
-      const appId = await ctx.runMutation(api.apps.generateApp, {
+      const appId = await ctx.runMutation(internal.apps.generateApp, {
         specId: args.specId,
         name: appName,
         description: generated.understanding,
@@ -204,8 +204,8 @@ export const refineUI = action({
     appId: v.id("generatedApps"),
     refinementRequest: v.string(), // "Make it more colorful", "Add a search bar", "Make cards bigger"
   },
-  handler: async (ctx, args) => {
-    const app = await ctx.runQuery(api.apps.getApp, { id: args.appId });
+  handler: async (ctx: ActionCtx, args) => {
+    const app = await ctx.runQuery(internal.apps.getApp, { id: args.appId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -213,7 +213,7 @@ export const refineUI = action({
     }
 
     try {
-      const metadata = app.metadata ? JSON.parse(app.metadata) : {};
+      const metadata = app.metadata || {};
       const currentDesign = metadata.design || {};
 
       const prompt = `You are refining a beautiful customer-facing application based on user feedback.
@@ -276,7 +276,7 @@ Return as JSON:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
       
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -289,14 +289,8 @@ Return as JSON:
       // Merge changes with existing files
       const updatedCode = { ...app.code, ...refined.files };
 
-      // Update metadata with new design
-      const updatedMetadata = {
-        ...metadata,
-        design: { ...currentDesign, ...refined.designChanges },
-      };
-
       // Save updates
-      await ctx.runMutation(api.appUpdates.updateApp, {
+      await ctx.runMutation(internal.appUpdates.updateApp, {
         id: args.appId,
         code: JSON.stringify(updatedCode),
       });
@@ -326,8 +320,8 @@ export const createBeautifulComponent = action({
     componentDescription: v.string(), // "A product card with image, price, and add to cart button"
     endpoints: v.array(v.string()), // ["GET /products/{id}"]
   },
-  handler: async (ctx, args) => {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: args.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -393,7 +387,7 @@ Return as JSON:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
       
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -424,9 +418,9 @@ export const addFeature = action({
     appId: v.id("generatedApps"),
     featureDescription: v.string(), // "Add a shopping cart", "Add user authentication"
   },
-  handler: async (ctx, args) => {
-    const app = await ctx.runQuery(api.apps.getApp, { id: args.appId });
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: app.specId });
+  handler: async (ctx: ActionCtx, args) => {
+    const app = await ctx.runQuery(internal.apps.getApp, { id: args.appId });
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: app.specId });
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!openaiKey) {
@@ -434,7 +428,7 @@ export const addFeature = action({
     }
 
     try {
-      const metadata = app.metadata ? JSON.parse(app.metadata) : {};
+      const metadata = app.metadata || {};
 
       const prompt = `Add a new feature to this customer-facing application.
 
@@ -494,7 +488,7 @@ Return as JSON:
         }),
       });
 
-      const data = await response.json();
+      const data: any = await response.json();
       const content = data.choices[0].message.content;
       
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -512,7 +506,7 @@ Return as JSON:
       };
 
       // Update the app
-      await ctx.runMutation(api.appUpdates.updateApp, {
+      await ctx.runMutation(internal.appUpdates.updateApp, {
         id: args.appId,
         code: JSON.stringify(updatedCode),
       });

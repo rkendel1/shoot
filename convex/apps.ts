@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Generate an app from a spec
 export const generateApp = mutation({
@@ -12,7 +12,7 @@ export const generateApp = mutation({
     code: v.string(), // JSON stringified
     metadata: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const appId = await ctx.db.insert("generatedApps", args);
 
     return {
@@ -28,16 +28,14 @@ export const getAllApps = query({
   args: {
     specId: v.optional(v.id("apiSpecs")),
   },
-  handler: async (ctx, args) => {
-    let appsQuery = ctx.db.query("generatedApps");
-
-    if (args.specId) {
-      appsQuery = appsQuery.withIndex("by_spec", (q) =>
-        q.eq("specId", args.specId)
-      );
-    }
-
-    const apps = await appsQuery.order("desc").collect();
+  handler: async (ctx: QueryCtx, args) => {
+    const apps = args.specId
+      ? await ctx.db
+          .query("generatedApps")
+          .withIndex("by_spec", (q) => q.eq("specId", args.specId as Id<"apiSpecs">))
+          .order("desc")
+          .collect()
+      : await ctx.db.query("generatedApps").order("desc").collect();
 
     return apps.map((app) => ({
       id: app._id,
@@ -55,7 +53,7 @@ export const getAllApps = query({
 // Get a specific app
 export const getApp = query({
   args: { id: v.id("generatedApps") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const app = await ctx.db.get(args.id);
 
     if (!app) {
@@ -74,7 +72,7 @@ export const getApp = query({
 // Delete an app
 export const deleteApp = mutation({
   args: { id: v.id("generatedApps") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     await ctx.db.delete(args.id);
     return { success: true };
   },

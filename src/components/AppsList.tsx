@@ -54,7 +54,7 @@ export const AppsList: React.FC<AppsListProps> = ({ specId, onSelectApp, selecte
     <div className="apps-list">
       <h2>🛠️ Generated Apps ({apps.length})</h2>
       <div className="apps-grid">
-        {apps.map((app) => (
+        {apps.map((app: typeof apps[number]) => (
           <div
             key={app.id}
             className={`app-card ${selectedAppId === app.id ? 'selected' : ''}`}

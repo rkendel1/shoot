@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
-import { api, internal } from "./_generated/api";
+import { action, mutation, query, ActionCtx, QueryCtx, MutationCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Send a chat message
@@ -10,38 +10,38 @@ export const sendMessage = action({
     conversationId: v.optional(v.string()),
     specId: v.optional(v.id("apiSpecs")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args) => {
     const convId = args.conversationId || crypto.randomUUID();
 
     // Get or create conversation context
-    let conversation = await ctx.runQuery(api.chat.getConversation, {
+    let conversation = await ctx.runQuery(internal.chat.getConversation, {
       conversationId: convId,
     });
 
     if (!conversation && args.specId) {
       // Create new conversation
-      await ctx.runMutation(api.chat.createConversation, {
+      await ctx.runMutation(internal.chat.createConversation, {
         conversationId: convId,
         currentSpecId: args.specId,
       });
     }
 
     // Save user message
-    await ctx.runMutation(api.chat.saveMessage, {
+    await ctx.runMutation(internal.chat.saveMessage, {
       conversationId: convId,
       role: "user",
       content: args.message,
     });
 
     // Process message and get response
-    const response = await ctx.runAction(internal.chat.processMessage, {
+    const response: any = await ctx.runAction(internal.chat.processMessage, {
       message: args.message,
       conversationId: convId,
       currentSpecId: conversation?.currentSpecId || args.specId,
     });
 
     // Save assistant response
-    await ctx.runMutation(api.chat.saveMessage, {
+    await ctx.runMutation(internal.chat.saveMessage, {
       conversationId: convId,
       role: "assistant",
       content: response.message,
@@ -57,7 +57,7 @@ export const sendMessage = action({
 // Get conversation context
 export const getConversation = query({
   args: { conversationId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const conversation = await ctx.db
       .query("conversations")
       .withIndex("by_conversation_id", (q) =>
@@ -75,7 +75,7 @@ export const createConversation = mutation({
     conversationId: v.string(),
     currentSpecId: v.optional(v.id("apiSpecs")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const id = await ctx.db.insert("conversations", args);
     return id;
   },
@@ -89,7 +89,7 @@ export const updateConversation = mutation({
     currentAppId: v.optional(v.id("generatedApps")),
     lastAction: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const conversation = await ctx.db
       .query("conversations")
       .withIndex("by_conversation_id", (q) =>
@@ -114,7 +114,7 @@ export const saveMessage = mutation({
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     content: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const id = await ctx.db.insert("messages", args);
     return id;
   },
@@ -126,7 +126,7 @@ export const getMessages = query({
     conversationId: v.string(),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const messages = await ctx.db
       .query("messages")
       .withIndex("by_conversation", (q) =>
@@ -146,7 +146,7 @@ export const getMessages = query({
 // Clear conversation
 export const clearConversation = mutation({
   args: { conversationId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     // Delete messages
     const messages = await ctx.db
       .query("messages")
@@ -182,18 +182,18 @@ export const processMessage = action({
     conversationId: v.string(),
     currentSpecId: v.optional(v.id("apiSpecs")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: ActionCtx, args) => {
     const lowerMessage = args.message.toLowerCase();
 
     // Intent detection - prioritize specific intents first
     if (detectBuildIntent(lowerMessage) && args.currentSpecId) {
       return await handleBuildCustomerApp(ctx, args);
     } else if (detectAddFeatureIntent(lowerMessage)) {
-      return await handleAddFeature(ctx, args);
+      return await handleAddFeature();
     } else if (detectRefineIntent(lowerMessage)) {
-      return await handleRefineUI(ctx, args);
+      return await handleRefineUI();
     } else if (detectUploadIntent(lowerMessage)) {
-      return handleUploadIntent(args.message, args.currentSpecId);
+      return handleUploadIntent(args.message);
     } else if (detectGenerateIntent(lowerMessage)) {
       return await handleGenerateIntent(ctx, args.message, args.currentSpecId);
     } else if (detectAnalyzeIntent(lowerMessage)) {
@@ -203,7 +203,7 @@ export const processMessage = action({
     } else if (detectHelpIntent(lowerMessage)) {
       return handleHelpIntent();
     } else {
-      return await handleGeneralConversation(ctx, args.message, args.currentSpecId);
+      return await handleGeneralConversation(args.message, args.currentSpecId);
     }
   },
 });
@@ -242,7 +242,7 @@ function detectHelpIntent(message: string): boolean {
 }
 
 // Intent handlers
-function handleUploadIntent(message: string, currentSpecId?: Id<"apiSpecs">) {
+function handleUploadIntent(message: string) {
   const urlMatch = message.match(/https?:\/\/[^\s]+/);
 
   if (urlMatch) {
@@ -269,12 +269,12 @@ function handleUploadIntent(message: string, currentSpecId?: Id<"apiSpecs">) {
 }
 
 async function handleGenerateIntent(
-  ctx: any,
+  ctx: ActionCtx,
   message: string,
   currentSpecId?: Id<"apiSpecs">
 ) {
   if (!currentSpecId) {
-    const specs = await ctx.runQuery(api.specs.getAllSpecs, {});
+    const specs = await ctx.runQuery(internal.specs.getAllSpecs, {});
 
     if (specs.length === 0) {
       return {
@@ -302,7 +302,7 @@ async function handleGenerateIntent(
     framework = "node";
   }
 
-  const spec = await ctx.runQuery(api.specs.getSpec, { id: currentSpecId });
+  const spec = await ctx.runQuery(internal.specs.getSpec, { id: currentSpecId });
 
   return {
     message: `Perfect! I'll generate a **${framework.toUpperCase()}** app for "${spec.name}".\n\nThe app will include:\n\n✓ API client with all ${spec.endpoints.length} endpoints\n✓ TypeScript types and interfaces\n✓ Error handling and loading states\n✓ Clean, production-ready code\n\nWould you like me to use AI to enhance the code generation?`,
@@ -320,9 +320,9 @@ async function handleGenerateIntent(
   };
 }
 
-async function handleAnalyzeIntent(ctx: any, currentSpecId?: Id<"apiSpecs">) {
+async function handleAnalyzeIntent(ctx: ActionCtx, currentSpecId?: Id<"apiSpecs">) {
   if (!currentSpecId) {
-    const specs = await ctx.runQuery(api.specs.getAllSpecs, {});
+    const specs = await ctx.runQuery(internal.specs.getAllSpecs, {});
 
     if (specs.length === 0) {
       return {
@@ -343,7 +343,7 @@ async function handleAnalyzeIntent(ctx: any, currentSpecId?: Id<"apiSpecs">) {
     };
   }
 
-  const spec = await ctx.runQuery(api.specs.getSpec, { id: currentSpecId });
+  const spec = await ctx.runQuery(internal.specs.getSpec, { id: currentSpecId });
   const endpoints = spec.endpoints;
 
   let analysisMessage = `Here's my analysis of **"${spec.name}"**:\n\n`;
@@ -361,7 +361,7 @@ async function handleAnalyzeIntent(ctx: any, currentSpecId?: Id<"apiSpecs">) {
   // Analyze paths
   const paths = endpoints.map((e: any) => e.path);
   analysisMessage += `🛤️ **Sample Endpoints**\n`;
-  paths.slice(0, 5).forEach((p) => {
+  paths.slice(0, 5).forEach((p: any) => {
     analysisMessage += `- \`${p}\`\n`;
   });
   if (paths.length > 5) {
@@ -385,12 +385,12 @@ async function handleAnalyzeIntent(ctx: any, currentSpecId?: Id<"apiSpecs">) {
 }
 
 async function handleListIntent(
-  ctx: any,
+  ctx: ActionCtx,
   message: string,
   currentSpecId?: Id<"apiSpecs">
 ) {
   if (/endpoint|api|route/.test(message.toLowerCase()) && currentSpecId) {
-    const spec = await ctx.runQuery(api.specs.getSpec, { id: currentSpecId });
+    const spec = await ctx.runQuery(internal.specs.getSpec, { id: currentSpecId });
     const endpoints = spec.endpoints;
 
     let endpointList = `Here are all **${endpoints.length}** endpoints for **"${spec.name}"**:\n\n`;
@@ -416,7 +416,7 @@ async function handleListIntent(
   }
 
   // List specs
-  const specs = await ctx.runQuery(api.specs.getAllSpecs, {});
+  const specs = await ctx.runQuery(internal.specs.getAllSpecs, {});
 
   if (specs.length === 0) {
     return {
@@ -489,7 +489,6 @@ What would you like to do?`,
 }
 
 async function handleGeneralConversation(
-  ctx: any,
   message: string,
   currentSpecId?: Id<"apiSpecs">
 ) {
@@ -537,7 +536,7 @@ ${currentSpecId ? `The user is currently working with a spec.` : "No spec is cur
       }),
     });
 
-    const data = await response.json();
+    const data: any = await response.json();
     const aiMessage = data.choices[0].message.content;
 
     return {
@@ -562,7 +561,7 @@ ${currentSpecId ? `The user is currently working with a spec.` : "No spec is cur
 }
 
 // New: Handle building beautiful customer-facing apps
-async function handleBuildCustomerApp(ctx: any, args: any) {
+async function handleBuildCustomerApp(ctx: ActionCtx, args: any) {
   if (!args.currentSpecId) {
     return {
       message: `I'd love to build a beautiful customer-facing app! But first, I need an API spec to work with.\n\nLet's upload one now.`,
@@ -573,7 +572,7 @@ async function handleBuildCustomerApp(ctx: any, args: any) {
     };
   }
 
-  const spec = await ctx.runQuery(api.specs.getSpec, { id: args.currentSpecId });
+  const spec = await ctx.runQuery(internal.specs.getSpec, { id: args.currentSpecId });
 
   return {
     message: `🎨 Perfect! I'll build a beautiful, customer-ready app for **"${spec.name}"**.\n\nI'll:\n✨ Design a modern, professional UI\n🎯 Select the right endpoints\n⚡ Make it fully functional\n📱 Ensure it's responsive\n🚀 Make it deployment-ready\n\n**Building now...** This will take a moment as I craft something beautiful!`,
@@ -586,7 +585,7 @@ async function handleBuildCustomerApp(ctx: any, args: any) {
 }
 
 // New: Handle adding features to existing apps
-async function handleAddFeature(ctx: any, args: any) {
+async function handleAddFeature() {
   // This would need additional context about which app to modify
   return {
     message: `I can add that feature! Which app would you like me to update?\n\nYou can say:\n- "Add it to my latest app"\n- "Add it to [app name]"\n- Or select an app from the Generated Apps tab`,
@@ -598,7 +597,7 @@ async function handleAddFeature(ctx: any, args: any) {
 }
 
 // New: Handle UI refinement requests
-async function handleRefineUI(ctx: any, args: any) {
+async function handleRefineUI() {
   return {
     message: `I can refine the UI! Which app should I update?\n\nYou can:\n- Select an app from the Generated Apps tab\n- Say "refine my latest app"\n- Tell me the app name`,
     suggestions: [

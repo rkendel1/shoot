@@ -18,7 +18,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const [baseUrl, setBaseUrl] = useState('https://api.example.com');
   const [selectedApiKey, setSelectedApiKey] = useState('');
   const [authType, setAuthType] = useState<'bearer' | 'apikey' | 'basic' | 'none'>('bearer');
-  const [customHeaders, setCustomHeaders] = useState<{[key: string]: string}>({});
   const [pathParams, setPathParams] = useState<{[key: string]: string}>({});
   const [queryParams, setQueryParams] = useState<{[key: string]: string}>({});
   const [requestBody, setRequestBody] = useState('');
@@ -139,7 +138,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
       const url = buildUrl();
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
-        ...customHeaders,
       };
 
       // Add authentication
