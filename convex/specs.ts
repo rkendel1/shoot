@@ -93,7 +93,7 @@ export const getSpec = query({
       specType: spec.specType,
       content: spec.content,
       overrideBaseUrl: spec.overrideBaseUrl,
-      endpoints: endpoints,
+      endpoints: endpoints.map(e => ({ ...e })),
     };
   },
 });
@@ -107,7 +107,7 @@ export const getEndpoints = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
       .collect();
 
-    return endpoints;
+    return endpoints.map(e => ({ ...e }));
   },
 });
 

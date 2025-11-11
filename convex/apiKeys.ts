@@ -43,7 +43,8 @@ export const getApiKeys = query({
 export const getApiKeyInternal = internalQuery({
   args: { id: v.id("apiKeys") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const key = await ctx.db.get(args.id);
+    return key ? { ...key } : null;
   },
 });
 
