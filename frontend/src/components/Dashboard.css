@@ -177,6 +177,26 @@
   transform: translateX(5px);
 }
 
+.quick-action-btn.selector-btn {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+.quick-action-btn.selector-btn:hover {
+  transform: translateX(5px) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.quick-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quick-action-btn:disabled:hover {
+  transform: none;
+}
+
 .dashboard-content {
   flex: 1;
   overflow: hidden;
