@@ -37,15 +37,20 @@ export const getAllApps = query({
           .collect()
       : await ctx.db.query("generatedApps").order("desc").collect();
 
-    // Return simpler objects, avoid parsing JSON here
     return apps.map((app) => ({
       id: app._id,
       specId: app.specId,
       name: app.name,
       description: app.description,
       framework: app.framework,
-      code: app.code, // Pass the raw code string
-      metadata: app.metadata,
+      fileCount: (() => {
+        try {
+          return app.code ? Object.keys(JSON.parse(app.code)).length : 0;
+        } catch {
+          return 0;
+        }
+      })(),
+      metadata: app.metadata, // Return as string
       createdAt: app._creationTime,
     }));
   },

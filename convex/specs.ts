@@ -83,9 +83,25 @@ export const getSpec = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
 
+    // Return a simplified, explicit object to help with type inference
     return {
-      ...spec,
-      endpoints: endpoints, // Return raw documents to simplify the type
+      _id: spec._id,
+      name: spec.name,
+      description: spec.description,
+      version: spec.version,
+      specType: spec.specType,
+      content: spec.content, // Return as string
+      _creationTime: spec._creationTime,
+      endpoints: endpoints.map(e => ({
+        _id: e._id,
+        path: e.path,
+        method: e.method,
+        summary: e.summary,
+        description: e.description,
+        parameters: e.parameters,
+        requestBody: e.requestBody,
+        responses: e.responses,
+      })),
     };
   },
 });

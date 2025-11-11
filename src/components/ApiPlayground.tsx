@@ -8,6 +8,12 @@ interface ApiPlaygroundProps {
   specId: Id<'apiSpecs'>;
 }
 
+interface EndpointHistory {
+  pathParams: Record<string, string>;
+  queryParams: Record<string, string>;
+  requestBody: string;
+}
+
 export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const spec = useQuery(api.specs.getSpec, { id: specId });
   const apiKeys = useQuery(api.apiKeys.getApiKeys, { specId });
@@ -31,6 +37,8 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const [newKeyValue, setNewKeyValue] = useState('');
   const [keyDescription, setKeyDescription] = useState('');
 
+  const [endpointHistory, setEndpointHistory] = useState<Record<string, EndpointHistory>>({});
+
   // Auto-select first API key
   useEffect(() => {
     if (apiKeys && apiKeys.length > 0 && !selectedApiKey) {
@@ -43,7 +51,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     if (spec?.content) {
       const parsedContent = JSON.parse(spec.content);
       
-      // Set base URL (handles OpenAPI 3 and Swagger 2)
       if (parsedContent?.servers?.[0]?.url) {
         setBaseUrl(parsedContent.servers[0].url);
       } else if (parsedContent?.host && parsedContent?.basePath) {
@@ -52,7 +59,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
         setBaseUrl(newBaseUrl);
       }
 
-      // Parse security schemes
       const schemes = parsedContent.components?.securitySchemes || parsedContent.securityDefinitions || {};
       const securityReqs = parsedContent.security || [];
 
@@ -71,10 +77,23 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     }
   }, [spec]);
 
-  useEffect(() => {
-    if (selectedEndpoint) {
+  if (!spec) {
+    return <div className="api-playground loading">Loading...</div>;
+  }
+
+  const handleSelectEndpoint = (endpoint: any) => {
+    setSelectedEndpoint(endpoint);
+    const history = endpointHistory[endpoint._id];
+
+    if (history) {
+      // Pre-populate from history
+      setPathParams(history.pathParams);
+      setQueryParams(history.queryParams);
+      setRequestBody(history.requestBody);
+    } else {
+      // Initialize as empty
       const pathP: {[key: string]: string} = {};
-      const matches = selectedEndpoint.path.match(/{([^}]+)}/g);
+      const matches = endpoint.path.match(/{([^}]+)}/g);
       if (matches) {
         matches.forEach((match: string) => {
           const paramName = match.replace(/[{}]/g, '');
@@ -83,7 +102,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
       }
       setPathParams(pathP);
       
-      const parameters = selectedEndpoint.parameters ? JSON.parse(selectedEndpoint.parameters) : [];
+      const parameters = endpoint.parameters ? JSON.parse(endpoint.parameters) : [];
       if (parameters) {
         const qParams: {[key: string]: string} = {};
         parameters
@@ -93,12 +112,9 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
           });
         setQueryParams(qParams);
       }
+      setRequestBody('');
     }
-  }, [selectedEndpoint]);
-
-  if (!spec) {
-    return <div className="api-playground loading">Loading...</div>;
-  }
+  };
 
   const handleAddApiKey = async () => {
     if (!newKeyName || !newKeyValue) return alert('Please provide key name and value');
@@ -138,11 +154,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     try {
       let authPayload: any = undefined;
       if (selectedApiKey && securitySchemes.length > 0) {
-        // Assume the first security scheme is the one to use for the selected key
-        authPayload = {
-          apiKeyId: selectedApiKey,
-          scheme: securitySchemes[0],
-        };
+        authPayload = { apiKeyId: selectedApiKey, scheme: securitySchemes[0] };
       }
 
       const res = await proxyRequest({
@@ -154,6 +166,14 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
         baseUrl: baseUrl,
         auth: authPayload,
       });
+      
+      if (res.status >= 200 && res.status < 300) {
+        // Save successful request to history
+        setEndpointHistory(prev => ({
+          ...prev,
+          [selectedEndpoint._id]: { pathParams, queryParams, requestBody }
+        }));
+      }
       
       if (res.status >= 400) {
         setError(`Request failed with status ${res.status}`);
@@ -177,7 +197,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
           <h3>Endpoints ({spec.endpoints.length})</h3>
           <div className="endpoints-list">
             {spec.endpoints.map((endpoint: any, idx: number) => (
-              <div key={idx} className={`endpoint-item ${selectedEndpoint?._id === endpoint._id ? 'selected' : ''}`} onClick={() => setSelectedEndpoint(endpoint)}>
+              <div key={idx} className={`endpoint-item ${selectedEndpoint?._id === endpoint._id ? 'selected' : ''}`} onClick={() => handleSelectEndpoint(endpoint)}>
                 <span className={`method-badge ${endpoint.method.toLowerCase()}`}>{endpoint.method}</span>
                 <span className="endpoint-path">{endpoint.path}</span>
               </div>
