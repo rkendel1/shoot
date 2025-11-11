@@ -14,6 +14,7 @@ export default defineSchema({
       v.literal("other")
     ),
     content: v.string(), // JSON stringified spec
+    overrideBaseUrl: v.optional(v.string()),
   }),
 
   // API Endpoints

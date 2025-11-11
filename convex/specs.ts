@@ -91,6 +91,7 @@ export const getSpec = query({
       version: spec.version,
       specType: spec.specType,
       content: spec.content, // Return as string
+      overrideBaseUrl: spec.overrideBaseUrl,
       _creationTime: spec._creationTime,
       endpoints: endpoints.map(e => ({
         _id: e._id,
@@ -142,6 +143,18 @@ export const deleteSpec = mutation({
     for (const key of apiKeys) await ctx.db.delete(key._id);
 
     await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
+
+// Update spec settings
+export const updateSpecSettings = mutation({
+  args: {
+    id: v.id("apiSpecs"),
+    overrideBaseUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { overrideBaseUrl: args.overrideBaseUrl });
     return { success: true };
   },
 });

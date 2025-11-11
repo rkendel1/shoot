@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useAction } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import './ApiPlayground.css';
@@ -17,8 +17,6 @@ interface EndpointHistory {
 export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const spec = useQuery(api.specs.getSpec, { id: specId });
   const apiKeys = useQuery(api.apiKeys.getApiKeys, { specId });
-  const addApiKey = useMutation(api.apiKeys.addApiKey);
-  const deleteApiKey = useMutation(api.apiKeys.deleteApiKey);
   const proxyRequest = useAction(api.specs.proxyApiRequest);
   
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
@@ -32,39 +30,27 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const [showKeyForm, setShowKeyForm] = useState(false);
-  const [newKeyName, setNewKeyName] = useState('');
-  const [newKeyValue, setNewKeyValue] = useState('');
-  const [keyDescription, setKeyDescription] = useState('');
-
   const [endpointHistory, setEndpointHistory] = useState<Record<string, EndpointHistory>>({});
 
-  // Auto-select first API key
   useEffect(() => {
     if (apiKeys && apiKeys.length > 0 && !selectedApiKey) {
       setSelectedApiKey(apiKeys[0].id);
     }
   }, [apiKeys, selectedApiKey]);
 
-  // Parse spec for base URL and security schemes
   useEffect(() => {
     if (spec?.content) {
       try {
         const parsedContent = JSON.parse(spec.content);
         let url = '';
-        // OpenAPI 3.x
         if (parsedContent?.servers?.[0]?.url) {
           url = parsedContent.servers[0].url;
-        } 
-        // Swagger 2.0
-        else if (parsedContent?.host) {
+        } else if (parsedContent?.host) {
           const scheme = parsedContent.schemes?.[0] || 'https';
           url = `${scheme}://${parsedContent.host}${parsedContent.basePath || ''}`;
         }
         
-        if (url) {
-            setBaseUrl(url);
-        }
+        setBaseUrl(spec.overrideBaseUrl || url);
 
         const schemes = parsedContent.components?.securitySchemes || parsedContent.securityDefinitions || {};
         const securityReqs = parsedContent.security || [];
@@ -85,7 +71,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
         console.error("Failed to parse spec content in ApiPlayground", e);
       }
     }
-  }, [spec?.content]);
+  }, [spec]);
 
   if (!spec) {
     return <div className="api-playground loading">Loading...</div>;
@@ -96,12 +82,10 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     const history = endpointHistory[endpoint._id];
 
     if (history) {
-      // Pre-populate from history
       setPathParams(history.pathParams);
       setQueryParams(history.queryParams);
       setRequestBody(history.requestBody);
     } else {
-      // Initialize as empty
       const pathP: {[key: string]: string} = {};
       const matches = endpoint.path.match(/{([^}]+)}/g);
       if (matches) {
@@ -124,21 +108,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
       }
       setRequestBody('');
     }
-  };
-
-  const handleAddApiKey = async () => {
-    if (!newKeyName || !newKeyValue) return alert('Please provide key name and value');
-    await addApiKey({ specId, keyName: newKeyName, keyValue: newKeyValue, description: keyDescription || undefined });
-    setNewKeyName('');
-    setNewKeyValue('');
-    setKeyDescription('');
-    setShowKeyForm(false);
-  };
-
-  const handleDeleteApiKey = async (keyId: Id<'apiKeys'>) => {
-    if (!confirm('Delete this API key?')) return;
-    await deleteApiKey({ id: keyId });
-    if (selectedApiKey === keyId) setSelectedApiKey('');
   };
 
   const buildUrl = () => {
@@ -178,7 +147,6 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
       });
       
       if (res.status >= 200 && res.status < 300) {
-        // Save successful request to history
         setEndpointHistory(prev => ({
           ...prev,
           [selectedEndpoint._id]: { pathParams, queryParams, requestBody }
@@ -219,43 +187,36 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
             <>
               <div className="request-config">
                 <h3>📡 Request Configuration</h3>
-                <div className="api-keys-section">
-                  <div className="section-header">
-                    <h4>🔑 API Keys</h4>
-                    <button className="btn-small" onClick={() => setShowKeyForm(!showKeyForm)}>{showKeyForm ? 'Cancel' : '+ Add Key'}</button>
-                  </div>
-                  {showKeyForm && (
-                    <div className="key-form">
-                      <input type="text" placeholder="Key Name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
-                      <input type="password" placeholder="API Key Value" value={newKeyValue} onChange={(e) => setNewKeyValue(e.target.value)} />
-                      <input type="text" placeholder="Description (optional)" value={keyDescription} onChange={(e) => setKeyDescription(e.target.value)} />
-                      <button className="btn-primary" onClick={handleAddApiKey}>Save Key</button>
+                
+                {apiKeys && apiKeys.length > 0 && (
+                  <div className="api-keys-section">
+                    <div className="section-header">
+                      <h4>Select API Key</h4>
                     </div>
-                  )}
-                  {apiKeys && apiKeys.length > 0 && (
                     <div className="saved-keys">
                       {apiKeys.map((key: any) => (
                         <div key={key.id} className="key-item">
                           <input type="radio" id={`key-${key.id}`} name="apiKey" value={key.id} checked={selectedApiKey === key.id} onChange={() => setSelectedApiKey(key.id)} />
                           <label htmlFor={`key-${key.id}`}><strong>{key.keyName}</strong><code>{key.keyValue}</code></label>
-                          <button className="btn-delete-small" onClick={() => handleDeleteApiKey(key.id)}>✕</button>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+
                 {securitySchemes.length > 0 && (
                   <div className="form-group">
                     <label>Authentication ({securitySchemes[0].type})</label>
                     <div className="auth-info">
                       <p>This API requires a key sent via <strong>{securitySchemes[0].in}</strong> with the name <code>{securitySchemes[0].name}</code>.</p>
-                      <p>Select a saved key above to authenticate.</p>
+                      <p>Select a saved key above to authenticate. You can add/remove keys in the <strong>Spec Settings</strong> tab.</p>
                     </div>
                   </div>
                 )}
+
                 <div className="form-group">
-                  <label>Base URL</label>
-                  <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+                  <label>Base URL (from Spec Settings)</label>
+                  <input type="text" value={baseUrl} readOnly />
                 </div>
                 <div className="endpoint-info">
                   <div className="info-row"><strong>Method:</strong> <span className={`method-badge ${selectedEndpoint.method.toLowerCase()}`}>{selectedEndpoint.method}</span></div>

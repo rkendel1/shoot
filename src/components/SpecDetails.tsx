@@ -3,9 +3,10 @@ import { useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import { useAppContext } from '../App';
+import { SpecSettings } from './SpecSettings';
 import './SpecDetails.css';
 
-type TabType = 'overview' | 'endpoints' | 'suggestions' | 'workflows' | 'remixes';
+type TabType = 'overview' | 'endpoints' | 'suggestions' | 'workflows' | 'remixes' | 'settings';
 
 interface SpecDetailsProps {
   specId?: Id<'apiSpecs'>;
@@ -94,7 +95,7 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
               <h3>⚙️ Configuration</h3>
               <div className="config-item">
                 <strong>Base URL:</strong>
-                <code>{serverUrl}</code>
+                <code>{spec.overrideBaseUrl || serverUrl}</code>
               </div>
               <div className="config-item">
                 <strong>Authentication:</strong>
@@ -196,6 +197,9 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
             ) : <div className="empty-state"><p>No remixes yet. Ask AI for creative combinations!</p></div>}
           </div>
         );
+      
+      case 'settings':
+        return <SpecSettings specId={specId} />;
 
       default: return null;
     }
@@ -209,6 +213,7 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
         <button className={`tab ${activeTab === 'suggestions' ? 'active' : ''}`} onClick={() => setActiveTab('suggestions')}>🤖 AI Suggestions</button>
         <button className={`tab ${activeTab === 'workflows' ? 'active' : ''}`} onClick={() => setActiveTab('workflows')}>🔄 Workflows</button>
         <button className={`tab ${activeTab === 'remixes' ? 'active' : ''}`} onClick={() => setActiveTab('remixes')}>✨ Remixes</button>
+        <button className={`tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>⚙️ Settings</button>
       </div>
       <div className="tab-content-container">{renderTabContent()}</div>
     </div>
