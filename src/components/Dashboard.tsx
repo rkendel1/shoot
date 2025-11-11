@@ -8,10 +8,11 @@ import { AppsList } from './AppsList';
 import { CodeViewer } from './CodeViewer';
 import { ApiPlayground } from './ApiPlayground';
 import { ComponentSelector } from './ComponentSelector';
+import { Settings } from './Settings';
 import { Id } from '../../convex/_generated/dataModel';
 import './Dashboard.css';
 
-type View = 'chat' | 'specs' | 'apps' | 'playground';
+type View = 'chat' | 'specs' | 'apps' | 'playground' | 'settings';
 
 export const Dashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('chat');
@@ -80,6 +81,8 @@ export const Dashboard: React.FC = () => {
             <button onClick={() => setCurrentView('specs')}>Go to Specs</button>
           </div>
         );
+      case 'settings':
+        return <Settings />;
       default:
         return <Chat />;
     }
@@ -150,6 +153,14 @@ export const Dashboard: React.FC = () => {
               <span className="nav-icon">🧪</span>
               <span className="nav-label">API Playground</span>
               {!selectedSpecId && <span className="nav-hint">Select a spec first</span>}
+            </button>
+
+            <button
+              className={`nav-button ${currentView === 'settings' ? 'active' : ''}`}
+              onClick={() => setCurrentView('settings')}
+            >
+              <span className="nav-icon">⚙️</span>
+              <span className="nav-label">Settings</span>
             </button>
           </nav>
 

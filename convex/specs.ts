@@ -83,22 +83,24 @@ export const getSpec = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
 
+    // Return a simplified object to prevent type generation issues
     return {
-      id: spec._id,
+      _id: spec._id,
       name: spec.name,
       description: spec.description,
       version: spec.version,
       specType: spec.specType,
-      content: spec.content, // Return as string to avoid deep type instantiation
-      endpoints: endpoints.map((e) => ({
-        id: e._id,
+      content: spec.content, // Return as string
+      _creationTime: spec._creationTime,
+      endpoints: endpoints.map(e => ({
+        _id: e._id,
         path: e.path,
         method: e.method,
         summary: e.summary,
         description: e.description,
-        parameters: e.parameters, // Keep as string
-        requestBody: e.requestBody, // Keep as string
-        responses: e.responses, // Keep as string
+        parameters: e.parameters,
+        requestBody: e.requestBody,
+        responses: e.responses,
       })),
     };
   },

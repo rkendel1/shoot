@@ -153,7 +153,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
           <h3>Endpoints ({spec.endpoints.length})</h3>
           <div className="endpoints-list">
             {spec.endpoints.map((endpoint: any, idx: number) => (
-              <div key={idx} className={`endpoint-item ${selectedEndpoint?.id === endpoint.id ? 'selected' : ''}`} onClick={() => setSelectedEndpoint(endpoint)}>
+              <div key={idx} className={`endpoint-item ${selectedEndpoint?._id === endpoint._id ? 'selected' : ''}`} onClick={() => setSelectedEndpoint(endpoint)}>
                 <span className={`method-badge ${endpoint.method.toLowerCase()}`}>{endpoint.method}</span>
                 <span className="endpoint-path">{endpoint.path}</span>
               </div>

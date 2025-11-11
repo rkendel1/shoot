@@ -56,6 +56,7 @@ export const AppsList: React.FC<AppsListProps> = ({ specId, onSelectApp, selecte
       <div className="apps-grid">
         {apps.map((app: typeof apps[number]) => {
           const metadata = app.metadata ? JSON.parse(app.metadata) : null;
+          const fileCount = app.code ? Object.keys(JSON.parse(app.code)).length : 0;
           return (
             <div
               key={app.id}
@@ -86,7 +87,7 @@ export const AppsList: React.FC<AppsListProps> = ({ specId, onSelectApp, selecte
               )}
               <div className="app-footer">
                 <span className="file-count">
-                  📄 {app.fileCount} file{app.fileCount !== 1 ? 's' : ''}
+                  📄 {fileCount} file{fileCount !== 1 ? 's' : ''}
                 </span>
                 <span className="created-date">
                   {new Date(app.createdAt).toLocaleDateString()}
