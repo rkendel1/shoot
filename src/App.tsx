@@ -1,10 +1,10 @@
 import React, { createContext, useState, useContext } from 'react';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { Dashboard } from './components/Dashboard';
-import { Id } from '../../convex/_generated/dataModel';
+import { Id } from '../convex/_generated/dataModel';
 import './App.css';
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONEX_URL as string);
 
 // Global context for selected spec and app
 interface AppContextType {

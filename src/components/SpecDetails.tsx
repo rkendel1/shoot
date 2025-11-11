@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useAction } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
-import { Id } from '../../../convex/_generated/dataModel';
+import { api } from '../../convex/_generated/api';
+import { Id } from '../../convex/_generated/dataModel';
 import { useAppContext } from '../App';
 import './SpecDetails.css';
 
@@ -19,9 +19,9 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
   const spec = useQuery(api.specs.getSpec, specId ? { id: specId } : 'skip');
-  const insights = useQuery(api.insights.getInsights, specId ? { specId } : 'skip');
-  const workflows = useQuery(api.insights.getWorkflows, specId ? { specId } : 'skip');
-  const remixes = useQuery(api.insights.getRemixes, specId ? { specId } : 'skip');
+  const insights = useQuery(api.insights.getInsights, specId ? { id: specId } : 'skip');
+  const workflows = useQuery(api.insights.getWorkflows, specId ? { id: specId } : 'skip');
+  const remixes = useQuery(api.insights.getRemixes, specId ? { id: specId } : 'skip');
   
   const analyzeCapabilities = useAction(api.smartSuggestions.analyzeApiCapabilities);
 

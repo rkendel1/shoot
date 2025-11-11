@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
+import { api } from '../../convex/_generated/api';
 import { useAppContext } from '../App';
 import { Chat } from './Chat';
 import { SpecsList } from './SpecsList';
@@ -8,7 +8,7 @@ import { AppsList } from './AppsList';
 import { CodeViewer } from './CodeViewer';
 import { ApiPlayground } from './ApiPlayground';
 import { ComponentSelector } from './ComponentSelector';
-import { Id } from '../../../convex/_generated/dataModel';
+import { Id } from '../../convex/_generated/dataModel';
 import './Dashboard.css';
 
 type View = 'chat' | 'specs' | 'apps' | 'playground';

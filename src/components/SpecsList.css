@@ -1,15 +1,15 @@
-.apps-list {
+.specs-list {
   padding: 20px;
   background: #f7f9fc;
 }
 
-.apps-list h2 {
+.specs-list h2 {
   margin-bottom: 20px;
   color: #333;
 }
 
-.apps-list.loading,
-.apps-list.empty {
+.specs-list.loading,
+.specs-list.empty {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -37,13 +37,13 @@
   border: 1px dashed #ddd;
 }
 
-.apps-grid {
+.specs-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
 
-.app-card {
+.spec-card {
   background: white;
   border-radius: 12px;
   padding: 20px;
@@ -53,24 +53,24 @@
   border: 2px solid transparent;
 }
 
-.app-card:hover {
+.spec-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.app-card.selected {
+.spec-card.selected {
   border-color: #667eea;
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
 }
 
-.app-header {
+.spec-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 10px;
 }
 
-.app-header h3 {
+.spec-header h3 {
   margin: 0;
   color: #333;
   font-size: 18px;
@@ -95,42 +95,31 @@
   cursor: not-allowed;
 }
 
-.app-info {
+.spec-info {
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
-  flex-wrap: wrap;
 }
 
-.framework-badge,
-.ai-badge {
+.spec-type,
+.spec-version {
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 4px;
   font-weight: 600;
 }
 
-.framework-badge {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.framework-badge.react {
+.spec-type {
   background: #e3f2fd;
   color: #1976d2;
 }
 
-.framework-badge.node {
-  background: #e8f5e9;
-  color: #388e3c;
-}
-
-.ai-badge {
+.spec-version {
   background: #f3e5f5;
   color: #7b1fa2;
 }
 
-.app-description {
+.spec-description {
   color: #666;
   font-size: 14px;
   line-height: 1.5;
@@ -141,7 +130,7 @@
   overflow: hidden;
 }
 
-.app-footer {
+.spec-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -151,7 +140,7 @@
   font-size: 13px;
 }
 
-.file-count {
+.endpoint-count {
   color: #667eea;
   font-weight: 500;
 }
