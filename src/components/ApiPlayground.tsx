@@ -49,33 +49,43 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   // Parse spec for base URL and security schemes
   useEffect(() => {
     if (spec?.content) {
-      const parsedContent = JSON.parse(spec.content);
-      
-      if (parsedContent?.servers?.[0]?.url) {
-        setBaseUrl(parsedContent.servers[0].url);
-      } else if (parsedContent?.host && parsedContent?.basePath) {
-        const scheme = parsedContent.schemes?.[0] || 'https';
-        const newBaseUrl = `${scheme}://${parsedContent.host}${parsedContent.basePath}`;
-        setBaseUrl(newBaseUrl);
-      }
+      try {
+        const parsedContent = JSON.parse(spec.content);
+        let url = '';
+        // OpenAPI 3.x
+        if (parsedContent?.servers?.[0]?.url) {
+          url = parsedContent.servers[0].url;
+        } 
+        // Swagger 2.0
+        else if (parsedContent?.host) {
+          const scheme = parsedContent.schemes?.[0] || 'https';
+          url = `${scheme}://${parsedContent.host}${parsedContent.basePath || ''}`;
+        }
+        
+        if (url) {
+            setBaseUrl(url);
+        }
 
-      const schemes = parsedContent.components?.securitySchemes || parsedContent.securityDefinitions || {};
-      const securityReqs = parsedContent.security || [];
+        const schemes = parsedContent.components?.securitySchemes || parsedContent.securityDefinitions || {};
+        const securityReqs = parsedContent.security || [];
 
-      if (securityReqs.length > 0) {
-        const requiredSchemeNames = Object.keys(securityReqs[0]);
-        const activeSchemes = requiredSchemeNames.map(name => {
-          if (schemes[name]) {
-            return { keyName: name, ...schemes[name] };
-          }
-          return null;
-        }).filter(Boolean);
-        setSecuritySchemes(activeSchemes);
-      } else {
-        setSecuritySchemes([]);
+        if (securityReqs.length > 0) {
+          const requiredSchemeNames = Object.keys(securityReqs[0]);
+          const activeSchemes = requiredSchemeNames.map(name => {
+            if (schemes[name]) {
+              return { keyName: name, ...schemes[name] };
+            }
+            return null;
+          }).filter(Boolean);
+          setSecuritySchemes(activeSchemes);
+        } else {
+          setSecuritySchemes([]);
+        }
+      } catch (e) {
+        console.error("Failed to parse spec content in ApiPlayground", e);
       }
     }
-  }, [spec]);
+  }, [spec?.content]);
 
   if (!spec) {
     return <div className="api-playground loading">Loading...</div>;

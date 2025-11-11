@@ -5,7 +5,7 @@ import { Id } from '../../convex/_generated/dataModel';
 import { useAppContext } from '../App';
 import './SpecDetails.css';
 
-type TabType = 'overview' | 'endpoints' | 'suggestions' | 'workflows' | 'remixes' | 'playground';
+type TabType = 'overview' | 'endpoints' | 'suggestions' | 'workflows' | 'remixes';
 
 interface SpecDetailsProps {
   specId?: Id<'apiSpecs'>;
@@ -40,8 +40,6 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
     return <div className="spec-details loading">Loading spec details...</div>;
   }
 
-  const parsedContent = spec.content ? JSON.parse(spec.content) : null;
-
   const handleAnalyze = async () => {
     if (!specId) return;
     setLoadingSuggestions(true);
@@ -57,8 +55,28 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
   };
 
   const renderTabContent = () => {
+    const parsedContent = spec.content ? JSON.parse(spec.content) : null;
+
     switch (activeTab) {
       case 'overview':
+        const serverUrl = parsedContent?.servers?.[0]?.url || (parsedContent?.host ? `${parsedContent.schemes?.[0] || 'https'}://${parsedContent.host}${parsedContent.basePath || ''}` : 'Not found');
+        const securitySchemes = parsedContent?.components?.securitySchemes || parsedContent?.securityDefinitions || {};
+        const securityReqs = parsedContent?.security || [];
+        let authInfo = 'None';
+        if (securityReqs.length > 0) {
+            const schemeName = Object.keys(securityReqs[0])[0];
+            const scheme = securitySchemes[schemeName];
+            if (scheme) {
+                if (scheme.type === 'apiKey') {
+                    authInfo = `API Key in ${scheme.in} (name: ${scheme.name})`;
+                } else if (scheme.type === 'http') {
+                    authInfo = `HTTP ${scheme.scheme}`;
+                } else {
+                    authInfo = scheme.type;
+                }
+            }
+        }
+
         return (
           <div className="tab-content overview">
             <div className="spec-header">
@@ -71,14 +89,19 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
               <div className="stat-card"><span className="stat-value">{spec.specType.toUpperCase()}</span><span className="stat-label">Type</span></div>
               <div className="stat-card"><span className="stat-value">{new Set(spec.endpoints.map((e: any) => e.method)).size}</span><span className="stat-label">HTTP Methods</span></div>
             </div>
-            {parsedContent?.servers && (
-              <div className="servers-section">
-                <h3>🌐 Servers</h3>
-                {parsedContent.servers.map((server: any, idx: number) => (
-                  <div key={idx} className="server-item"><code>{server.url}</code>{server.description && <p>{server.description}</p>}</div>
-                ))}
+            
+            <div className="spec-config-section">
+              <h3>⚙️ Configuration</h3>
+              <div className="config-item">
+                <strong>Base URL:</strong>
+                <code>{serverUrl}</code>
               </div>
-            )}
+              <div className="config-item">
+                <strong>Authentication:</strong>
+                <span>{authInfo}</span>
+              </div>
+            </div>
+
             <div className="actions-section">
               <button className="action-btn primary" onClick={handleAnalyze} disabled={loadingSuggestions}>
                 {loadingSuggestions ? '⏳ Analyzing...' : '🤖 Get AI Suggestions'}
@@ -101,7 +124,6 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
                       <code className="endpoint-path">{endpoint.path}</code>
                     </div>
                     {endpoint.summary && <p className="endpoint-summary">{endpoint.summary}</p>}
-                    {endpoint.description && <p className="endpoint-description">{endpoint.description}</p>}
                     {parameters && parameters.length > 0 && (
                       <div className="endpoint-params">
                         <strong>Parameters:</strong>
@@ -142,18 +164,6 @@ export const SpecDetails: React.FC<SpecDetailsProps> = ({ specId: propSpecId }) 
               <section className="suggestion-section">
                 <h4>💡 Practical Use Cases</h4>
                 <div className="use-cases-grid">{insights.useCases.map((useCase: any, idx: number) => <div key={idx} className="use-case-card"><h5>{useCase.title}</h5><p>{useCase.description}</p><div className="use-case-meta"><span className={`complexity ${useCase.complexity}`}>{useCase.complexity}</span>{useCase.value && <span className="value">{useCase.value}</span>}</div></div>)}</div>
-              </section>
-            )}
-            {insights.missingFeatures && (
-              <section className="suggestion-section">
-                <h4>🔧 Missing Features & Workarounds</h4>
-                <div className="missing-features">{insights.missingFeatures.map((feature: any, idx: number) => <div key={idx} className="feature-card"><h5>{feature.feature}</h5><p>{feature.description}</p>{feature.workaround && <div className="workaround"><strong>Workaround:</strong> {feature.workaround}</div>}</div>)}</div>
-              </section>
-            )}
-            {insights.integrations && (
-              <section className="suggestion-section">
-                <h4>🔗 Integration Opportunities</h4>
-                <div className="integrations-grid">{insights.integrations.map((integration: any, idx: number) => <div key={idx} className="integration-card"><h5>{integration.service}</h5><p><strong>Purpose:</strong> {integration.purpose}</p><p><strong>Approach:</strong> {integration.approach}</p></div>)}</div>
               </section>
             )}
           </div>
