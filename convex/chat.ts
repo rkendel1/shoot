@@ -186,14 +186,14 @@ export const processMessage = action({
     const lowerMessage = args.message.toLowerCase();
 
     // Intent detection - prioritize specific intents first
-    if (detectBuildIntent(lowerMessage) && args.currentSpecId) {
+    if (detectUploadIntent(lowerMessage)) {
+      return await handleUploadIntent(ctx, args.message, args.conversationId);
+    } else if (detectBuildIntent(lowerMessage) && args.currentSpecId) {
       return await handleBuildCustomerApp(ctx, args);
     } else if (detectAddFeatureIntent(lowerMessage)) {
       return await handleAddFeature();
     } else if (detectRefineIntent(lowerMessage)) {
       return await handleRefineUI();
-    } else if (detectUploadIntent(lowerMessage)) {
-      return handleUploadIntent(args.message);
     } else if (detectGenerateIntent(lowerMessage)) {
       return await handleGenerateIntent(ctx, args.message, args.currentSpecId);
     } else if (detectAnalyzeIntent(lowerMessage)) {
@@ -242,27 +242,51 @@ function detectHelpIntent(message: string): boolean {
 }
 
 // Intent handlers
-function handleUploadIntent(message: string) {
+async function handleUploadIntent(ctx: ActionCtx, message: string, conversationId: string) {
   const urlMatch = message.match(/https?:\/\/[^\s]+/);
 
   if (urlMatch) {
-    return {
-      message: `I found a URL in your message! To upload this spec, please use the upload form or paste the spec content directly. I'll parse it and extract all the endpoints for you.\n\nURL detected: ${urlMatch[0]}\n\nWould you like me to guide you through uploading it?`,
-      suggestions: [
-        "Yes, help me upload",
-        "I'll paste the content",
-        "Show me my existing specs",
-      ],
-      action: "upload_spec",
-      data: { url: urlMatch[0] },
-    };
+    const specUrl = urlMatch[0];
+    try {
+      const result = await ctx.runAction(internal.utils.parseSpec, { specUrl });
+
+      if (result.success) {
+        await ctx.runMutation(internal.chat.updateConversation, {
+          conversationId: conversationId,
+          currentSpecId: result.id,
+        });
+        
+        return {
+          message: `✅ Success! I've loaded the API spec **"${result.name}"** with ${result.endpointCount} endpoints.\n\nIt's now the active context. What would you like to do next?`,
+          suggestions: [
+            "Analyze this API",
+            "Generate a React app",
+            "Show me the endpoints",
+          ],
+          action: "spec_uploaded",
+          data: { newSpecId: result.id },
+        };
+      } else {
+        return {
+          message: `❌ Oops! I had trouble parsing that spec.\n\n**Error:** ${result.error}\n\nPlease check the URL or try pasting the spec content directly.`,
+          suggestions: ["Let me paste the content", "Help me with uploads"],
+        };
+      }
+    } catch (error: any) {
+      console.error("Spec parsing error:", error);
+      return {
+        message: `❌ An unexpected error occurred while trying to fetch the spec: ${error.message}`,
+        suggestions: ["Try a different URL", "Let me paste the content"],
+      };
+    }
   }
 
+  // Fallback for "upload spec" without a URL
   return {
-    message: `I can help you upload an API spec! You can:\n\n1. **Paste a URL** to your OpenAPI/Swagger spec\n2. **Send me the spec content** directly (JSON or YAML)\n3. **Upload a file** using the upload interface\n\nJust send me any of these and I'll process it for you!`,
+    message: `I can help you upload an API spec! You can:\n\n1. **Paste a URL** to your OpenAPI/Swagger spec\n2. **Paste the spec content** directly (JSON or YAML)\n\nJust send me any of these and I'll process it for you!`,
     suggestions: [
       "https://petstore.swagger.io/v2/swagger.json",
-      "Let me paste the spec content",
+      "Let me paste the content",
       "Show me an example",
     ],
   };

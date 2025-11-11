@@ -14,10 +14,12 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ appId, onClose }) => {
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [showPreview, setShowPreview] = useState(false);
 
+  const code = app && app.code ? JSON.parse(app.code) : {};
+
   useEffect(() => {
-    if (app?.code && Object.keys(app.code).length > 0) {
+    if (code && Object.keys(code).length > 0) {
       // Select the first file by default
-      setSelectedFile(Object.keys(app.code)[0]);
+      setSelectedFile(Object.keys(code)[0]);
     }
   }, [app]);
 
@@ -29,8 +31,8 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ appId, onClose }) => {
     );
   }
 
-  const files = Object.keys(app.code);
-  const currentCode = selectedFile ? app.code[selectedFile] : '';
+  const files = Object.keys(code);
+  const currentCode = selectedFile ? code[selectedFile] : '';
 
   const downloadFile = (filename: string, content: string) => {
     const blob = new Blob([content], { type: 'text/plain' });
@@ -44,7 +46,7 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ appId, onClose }) => {
 
   const downloadAll = () => {
     // Download all files as individual downloads
-    Object.entries(app.code).forEach(([filename, content]) => {
+    Object.entries(code).forEach(([filename, content]) => {
       setTimeout(() => downloadFile(filename, content as string), 100);
     });
   };
@@ -133,18 +135,18 @@ export const CodeViewer: React.FC<CodeViewerProps> = ({ appId, onClose }) => {
             
             <div className="preview-instructions">
               <h4>📦 Package Information</h4>
-              {app.code['package.json'] && (
+              {code['package.json'] && (
                 <pre className="package-info">
-                  {JSON.stringify(JSON.parse(app.code['package.json']), null, 2)}
+                  {JSON.stringify(JSON.parse(code['package.json']), null, 2)}
                 </pre>
               )}
             </div>
 
             <div className="preview-readme">
               <h4>📖 Documentation</h4>
-              {app.code['README.md'] ? (
+              {code['README.md'] ? (
                 <div className="readme-content">
-                  <pre>{app.code['README.md']}</pre>
+                  <pre>{code['README.md']}</pre>
                 </div>
               ) : (
                 <p>No README available</p>

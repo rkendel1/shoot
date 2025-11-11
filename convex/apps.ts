@@ -44,7 +44,7 @@ export const getAllApps = query({
       description: app.description,
       framework: app.framework,
       fileCount: Object.keys(JSON.parse(app.code)).length,
-      metadata: app.metadata ? JSON.parse(app.metadata) : null,
+      metadata: app.metadata, // Return as string
       createdAt: app._creationTime,
     }));
   },
@@ -63,8 +63,8 @@ export const getApp = query({
     return {
       ...app,
       id: app._id,
-      code: JSON.parse(app.code),
-      metadata: app.metadata ? JSON.parse(app.metadata) : null,
+      code: app.code, // Return as string
+      metadata: app.metadata, // Return as string
     };
   },
 });

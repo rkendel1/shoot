@@ -21,7 +21,7 @@ export const Chat: React.FC = () => {
   const [selectorActive, setSelectorActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { selectedSpecId } = useAppContext();
+  const { selectedSpecId, setSelectedSpecId } = useAppContext();
   const sendMessageAction = useAction(api.chat.sendMessage);
 
   useEffect(() => {
@@ -85,6 +85,10 @@ export const Chat: React.FC = () => {
 
       if (!conversationId) {
         setConversationId(response.conversationId);
+      }
+
+      if (response.action === "spec_uploaded" && response.data?.newSpecId) {
+        setSelectedSpecId(response.data.newSpecId);
       }
 
       const assistantMessage: ChatMessage = {

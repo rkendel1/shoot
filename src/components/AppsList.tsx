@@ -54,44 +54,47 @@ export const AppsList: React.FC<AppsListProps> = ({ specId, onSelectApp, selecte
     <div className="apps-list">
       <h2>🛠️ Generated Apps ({apps.length})</h2>
       <div className="apps-grid">
-        {apps.map((app: typeof apps[number]) => (
-          <div
-            key={app.id}
-            className={`app-card ${selectedAppId === app.id ? 'selected' : ''}`}
-            onClick={() => onSelectApp(app.id)}
-          >
-            <div className="app-header">
-              <h3>{app.name}</h3>
-              <button
-                className="delete-btn"
-                onClick={(e) => handleDelete(app.id, e)}
-                disabled={deleting === app.id}
-                title="Delete app"
-              >
-                {deleting === app.id ? '⏳' : '🗑️'}
-              </button>
-            </div>
-            <div className="app-info">
-              <span className={`framework-badge ${app.framework}`}>
-                {app.framework === 'react' ? '⚛️ React' : '📦 Node.js'}
-              </span>
-              {app.metadata?.useAI && (
-                <span className="ai-badge">🤖 AI Enhanced</span>
+        {apps.map((app: typeof apps[number]) => {
+          const metadata = app.metadata ? JSON.parse(app.metadata) : null;
+          return (
+            <div
+              key={app.id}
+              className={`app-card ${selectedAppId === app.id ? 'selected' : ''}`}
+              onClick={() => onSelectApp(app.id)}
+            >
+              <div className="app-header">
+                <h3>{app.name}</h3>
+                <button
+                  className="delete-btn"
+                  onClick={(e) => handleDelete(app.id, e)}
+                  disabled={deleting === app.id}
+                  title="Delete app"
+                >
+                  {deleting === app.id ? '⏳' : '🗑️'}
+                </button>
+              </div>
+              <div className="app-info">
+                <span className={`framework-badge ${app.framework}`}>
+                  {app.framework === 'react' ? '⚛️ React' : '📦 Node.js'}
+                </span>
+                {metadata?.useAI && (
+                  <span className="ai-badge">🤖 AI Enhanced</span>
+                )}
+              </div>
+              {app.description && (
+                <p className="app-description">{app.description}</p>
               )}
+              <div className="app-footer">
+                <span className="file-count">
+                  📄 {app.fileCount} file{app.fileCount !== 1 ? 's' : ''}
+                </span>
+                <span className="created-date">
+                  {new Date(app.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </div>
-            {app.description && (
-              <p className="app-description">{app.description}</p>
-            )}
-            <div className="app-footer">
-              <span className="file-count">
-                📄 {app.fileCount} file{app.fileCount !== 1 ? 's' : ''}
-              </span>
-              <span className="created-date">
-                {new Date(app.createdAt).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

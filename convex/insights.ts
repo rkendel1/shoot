@@ -42,7 +42,7 @@ export const getInsights = query({
 
     return {
       ...insights,
-      insights: JSON.parse(insights.insights),
+      insights: insights.insights, // Return as string
     };
   },
 });
@@ -74,8 +74,8 @@ export const getWorkflows = query({
 
     return workflows.map((w) => ({
       ...w,
-      steps: JSON.parse(w.steps),
-      code: w.code ? JSON.parse(w.code) : null,
+      steps: w.steps, // Return as string
+      code: w.code, // Return as string
     }));
   },
 });
@@ -107,8 +107,8 @@ export const getRemixes = query({
 
     return remixes.map((r) => ({
       ...r,
-      endpointsUsed: JSON.parse(r.endpointsUsed),
-      implementation: JSON.parse(r.implementation),
+      endpointsUsed: r.endpointsUsed, // Return as string
+      implementation: r.implementation, // Return as string
     }));
   },
 });
