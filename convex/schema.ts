@@ -14,7 +14,7 @@ export default defineSchema({
       v.literal("other")
     ),
     content: v.string(), // JSON stringified spec
-  }).index("by_creation_time", ["_creationTime"]),
+  }),
 
   // API Endpoints
   apiEndpoints: defineTable({
@@ -27,8 +27,7 @@ export default defineSchema({
     requestBody: v.optional(v.string()), // JSON stringified
     responses: v.optional(v.string()), // JSON stringified
   })
-    .index("by_spec", ["specId"])
-    .index("by_creation_time", ["_creationTime"]),
+    .index("by_spec", ["specId"]),
 
   // Generated Apps
   generatedApps: defineTable({
@@ -39,8 +38,7 @@ export default defineSchema({
     code: v.string(), // JSON stringified code files
     metadata: v.optional(v.string()), // JSON stringified metadata
   })
-    .index("by_spec", ["specId"])
-    .index("by_creation_time", ["_creationTime"]),
+    .index("by_spec", ["specId"]),
 
   // API Keys
   apiKeys: defineTable({
@@ -72,8 +70,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant"), v.literal("system")),
     content: v.string(),
   })
-    .index("by_conversation", ["conversationId"])
-    .index("by_creation_time", ["_creationTime"]),
+    .index("by_conversation", ["conversationId"]),
 
   // AI-Generated Insights and Suggestions
   insights: defineTable({

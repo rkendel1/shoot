@@ -1,5 +1,7 @@
 {
   "node": {
-    "externalPackages": ["swagger-parser"]
+    "externalPackages": [
+      "swagger-parser"
+    ]
   }
 }
