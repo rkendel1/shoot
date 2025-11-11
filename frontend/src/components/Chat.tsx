@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { useMutation, useAction } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { useAppContext } from '../App';
+import { ComponentSelector } from './ComponentSelector';
 import './Chat.css';
 
 interface ChatMessage {
@@ -17,6 +18,7 @@ export const Chat: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string>();
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectorActive, setSelectorActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { selectedSpecId } = useAppContext();
@@ -120,8 +122,21 @@ export const Chat: React.FC = () => {
     sendMessage(suggestion);
   };
 
+  const handleElementSelect = (elementInfo: string) => {
+    setInput(prev => {
+      const newContent = prev ? `${prev}\n\n${elementInfo}` : elementInfo;
+      return newContent;
+    });
+  };
+
   return (
     <div className="chat-container">
+      <ComponentSelector 
+        isActive={selectorActive}
+        onSelect={handleElementSelect}
+        onClose={() => setSelectorActive(false)}
+      />
+
       <div className="chat-header">
         <h1>🎯 Shoot - API Spec to App Generator</h1>
         <p>
@@ -174,6 +189,13 @@ export const Chat: React.FC = () => {
       )}
 
       <div className="chat-input-container">
+        <button
+          className="selector-toggle-button"
+          onClick={() => setSelectorActive(!selectorActive)}
+          title="Select component or CSS from the page"
+        >
+          🎯 Selector
+        </button>
         <textarea
           className="chat-input"
           value={input}

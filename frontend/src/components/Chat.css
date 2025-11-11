@@ -202,6 +202,30 @@
   border-top: 1px solid #e0e0e0;
   display: flex;
   gap: 10px;
+  align-items: flex-end;
+}
+
+.selector-toggle-button {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.selector-toggle-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.selector-toggle-button:active {
+  transform: translateY(0);
 }
 
 .chat-input {
