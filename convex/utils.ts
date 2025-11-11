@@ -1,6 +1,8 @@
 import { action, ActionCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import SwaggerParser from "swagger-parser";
+import jsyaml from "js-yaml";
 
 // Parse spec from URL or content
 export const parseSpec = action({
@@ -10,30 +12,32 @@ export const parseSpec = action({
     name: v.optional(v.string()),
   },
   handler: async (ctx: ActionCtx, args) => {
-    let specContent: string;
     let parsedSpec: any;
 
     try {
       if (args.specUrl) {
-        // Fetch from URL
-        const response = await fetch(args.specUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch spec: ${response.statusText}`);
-        }
-        specContent = await response.text();
+        // swagger-parser can handle URLs directly, and it parses both JSON and YAML
+        parsedSpec = await SwaggerParser.bundle(args.specUrl);
       } else if (args.content) {
-        specContent = args.content;
+        let parsedContent: any;
+        try {
+          // Try parsing as JSON
+          parsedContent = JSON.parse(args.content);
+        } catch (e) {
+          // Fallback to parsing as YAML
+          try {
+            parsedContent = jsyaml.load(args.content);
+            if (typeof parsedContent !== 'object' || parsedContent === null) {
+              throw new Error("YAML content did not parse to an object.");
+            }
+          } catch (yamlError: any) {
+            throw new Error(`Failed to parse content as JSON or YAML: ${yamlError.message}`);
+          }
+        }
+        // Bundle to resolve any references
+        parsedSpec = await SwaggerParser.bundle(parsedContent);
       } else {
         throw new Error("Either content or specUrl is required");
-      }
-
-      // Try to parse as JSON first
-      try {
-        parsedSpec = JSON.parse(specContent);
-      } catch (e) {
-        // If JSON parsing fails, we'll need YAML parsing which requires a library
-        // For now, throw an error
-        throw new Error("Unable to parse spec as JSON. YAML support coming soon.");
       }
 
       // Extract metadata

@@ -83,10 +83,17 @@ export const getSpec = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
 
-    // Return a plain object to avoid type generation issues
+    // Return a plain object to avoid type generation issues with the spread operator
     return {
-      ...spec,
-      endpoints: endpoints.map(e => ({ ...e })),
+      _id: spec._id,
+      _creationTime: spec._creationTime,
+      name: spec.name,
+      description: spec.description,
+      version: spec.version,
+      specType: spec.specType,
+      content: spec.content,
+      overrideBaseUrl: spec.overrideBaseUrl,
+      endpoints: endpoints,
     };
   },
 });
@@ -100,7 +107,7 @@ export const getEndpoints = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.specId))
       .collect();
 
-    return endpoints.map(e => ({ ...e }));
+    return endpoints;
   },
 });
 

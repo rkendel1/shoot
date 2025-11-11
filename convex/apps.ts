@@ -62,7 +62,16 @@ export const getApp = query({
     }
 
     // Return a plain object to avoid type generation issues
-    return { ...app };
+    return {
+      _id: app._id,
+      _creationTime: app._creationTime,
+      specId: app.specId,
+      name: app.name,
+      description: app.description,
+      framework: app.framework,
+      code: app.code,
+      metadata: app.metadata,
+    };
   },
 });
 

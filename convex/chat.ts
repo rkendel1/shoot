@@ -65,7 +65,7 @@ export const getConversation = query({
       )
       .first();
 
-    return conversation ? { ...conversation } : null;
+    return conversation;
   },
 });
 
@@ -135,12 +135,11 @@ export const getMessages = query({
       .order("asc")
       .collect();
 
-    const plainMessages = messages.map((m) => ({ ...m }));
     if (args.limit) {
-      return plainMessages.slice(-args.limit);
+      return messages.slice(-args.limit);
     }
 
-    return plainMessages;
+    return messages;
   },
 });
 
