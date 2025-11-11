@@ -18,7 +18,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
   const [baseUrl, setBaseUrl] = useState('');
   const [selectedApiKey, setSelectedApiKey] = useState<Id<'apiKeys'> | ''>('');
-  const [authType, setAuthType] = useState<'bearer' | 'apikey' | 'basic' | 'none'>('bearer');
+  const [securitySchemes, setSecuritySchemes] = useState<any[]>([]);
   const [pathParams, setPathParams] = useState<{[key: string]: string}>({});
   const [queryParams, setQueryParams] = useState<{[key: string]: string}>({});
   const [requestBody, setRequestBody] = useState('');
@@ -38,19 +38,35 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     }
   }, [apiKeys, selectedApiKey]);
 
-  // Set base URL from spec (handles OpenAPI 3 and Swagger 2)
+  // Parse spec for base URL and security schemes
   useEffect(() => {
     if (spec?.content) {
       const parsedContent = JSON.parse(spec.content);
-      // OpenAPI 3.x
+      
+      // Set base URL (handles OpenAPI 3 and Swagger 2)
       if (parsedContent?.servers?.[0]?.url) {
         setBaseUrl(parsedContent.servers[0].url);
-      } 
-      // Swagger 2.0
-      else if (parsedContent?.host && parsedContent?.basePath) {
+      } else if (parsedContent?.host && parsedContent?.basePath) {
         const scheme = parsedContent.schemes?.[0] || 'https';
         const newBaseUrl = `${scheme}://${parsedContent.host}${parsedContent.basePath}`;
         setBaseUrl(newBaseUrl);
+      }
+
+      // Parse security schemes
+      const schemes = parsedContent.components?.securitySchemes || parsedContent.securityDefinitions || {};
+      const securityReqs = parsedContent.security || [];
+
+      if (securityReqs.length > 0) {
+        const requiredSchemeNames = Object.keys(securityReqs[0]);
+        const activeSchemes = requiredSchemeNames.map(name => {
+          if (schemes[name]) {
+            return { keyName: name, ...schemes[name] };
+          }
+          return null;
+        }).filter(Boolean);
+        setSecuritySchemes(activeSchemes);
+      } else {
+        setSecuritySchemes([]);
       }
     }
   }, [spec]);
@@ -120,15 +136,23 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     setResponse(null);
 
     try {
+      let authPayload: any = undefined;
+      if (selectedApiKey && securitySchemes.length > 0) {
+        // Assume the first security scheme is the one to use for the selected key
+        authPayload = {
+          apiKeyId: selectedApiKey,
+          scheme: securitySchemes[0],
+        };
+      }
+
       const res = await proxyRequest({
         endpointPath: selectedEndpoint.path,
         method: selectedEndpoint.method,
         pathParams: JSON.stringify(pathParams),
         queryParams: JSON.stringify(Object.fromEntries(Object.entries(queryParams).filter(([_, v]) => v !== ''))),
         body: requestBody || undefined,
-        apiKeyId: selectedApiKey ? selectedApiKey : undefined,
-        authType: authType,
         baseUrl: baseUrl,
+        auth: authPayload,
       });
       
       if (res.status >= 400) {
@@ -190,18 +214,18 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
                     </div>
                   )}
                 </div>
+                {securitySchemes.length > 0 && (
+                  <div className="form-group">
+                    <label>Authentication ({securitySchemes[0].type})</label>
+                    <div className="auth-info">
+                      <p>This API requires a key sent via <strong>{securitySchemes[0].in}</strong> with the name <code>{securitySchemes[0].name}</code>.</p>
+                      <p>Select a saved key above to authenticate.</p>
+                    </div>
+                  </div>
+                )}
                 <div className="form-group">
                   <label>Base URL</label>
                   <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label>Authentication Type</label>
-                  <select value={authType} onChange={(e) => setAuthType(e.target.value as any)}>
-                    <option value="none">None</option>
-                    <option value="bearer">Bearer Token</option>
-                    <option value="apikey">API Key (X-API-Key header)</option>
-                    <option value="basic">Basic Auth</option>
-                  </select>
                 </div>
                 <div className="endpoint-info">
                   <div className="info-row"><strong>Method:</strong> <span className={`method-badge ${selectedEndpoint.method.toLowerCase()}`}>{selectedEndpoint.method}</span></div>

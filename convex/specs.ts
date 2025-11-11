@@ -83,25 +83,9 @@ export const getSpec = query({
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
 
-    // Return a simplified object to prevent type generation issues
     return {
-      _id: spec._id,
-      name: spec.name,
-      description: spec.description,
-      version: spec.version,
-      specType: spec.specType,
-      content: spec.content, // Return as string
-      _creationTime: spec._creationTime,
-      endpoints: endpoints.map(e => ({
-        _id: e._id,
-        path: e.path,
-        method: e.method,
-        summary: e.summary,
-        description: e.description,
-        parameters: e.parameters,
-        requestBody: e.requestBody,
-        responses: e.responses,
-      })),
+      ...spec,
+      endpoints: endpoints, // Return raw documents to simplify the type
     };
   },
 });
@@ -154,15 +138,32 @@ export const proxyApiRequest = action({
     pathParams: v.string(), // JSON string
     queryParams: v.string(), // JSON string
     body: v.optional(v.string()),
-    apiKeyId: v.optional(v.id("apiKeys")),
-    authType: v.optional(v.string()),
     baseUrl: v.string(),
+    auth: v.optional(v.object({
+      apiKeyId: v.id("apiKeys"),
+      scheme: v.any(), // The security scheme object from the spec
+    })),
   },
   handler: async (ctx: ActionCtx, args) => {
-    let apiKey: string | undefined;
-    if (args.apiKeyId) {
-      const keyRecord = await ctx.runQuery(internal.apiKeys.getApiKeyInternal, { id: args.apiKeyId });
-      apiKey = keyRecord?.keyValue;
+    const headers: HeadersInit = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    const queryParams = JSON.parse(args.queryParams);
+
+    if (args.auth) {
+      const keyRecord = await ctx.runQuery(internal.apiKeys.getApiKeyInternal, { id: args.auth.apiKeyId });
+      const apiKey = keyRecord?.keyValue;
+      const scheme = args.auth.scheme;
+
+      if (apiKey && scheme) {
+        if (scheme.type === 'apiKey') {
+          if (scheme.in === 'header') {
+            headers[scheme.name] = apiKey;
+          } else if (scheme.in === 'query') {
+            queryParams[scheme.name] = apiKey;
+          }
+        } else if (scheme.type === 'http' && scheme.scheme === 'bearer') {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+      }
     }
 
     let path = args.endpointPath;
@@ -174,19 +175,9 @@ export const proxyApiRequest = action({
     const finalBaseUrl = args.baseUrl.endsWith('/') ? args.baseUrl.slice(0, -1) : args.baseUrl;
     let url = `${finalBaseUrl}${path}`;
 
-    const queryParams = JSON.parse(args.queryParams);
     const queryString = new URLSearchParams(queryParams).toString();
     if (queryString) {
       url += `?${queryString}`;
-    }
-
-    const headers: HeadersInit = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
-    if (apiKey && args.authType) {
-      if (args.authType === 'bearer') {
-        headers['Authorization'] = `Bearer ${apiKey}`;
-      } else if (args.authType === 'apikey') {
-        headers['X-API-Key'] = apiKey;
-      }
     }
 
     const options: RequestInit = {
