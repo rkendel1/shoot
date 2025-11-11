@@ -14,7 +14,7 @@ export const uploadSpec = mutation({
       v.literal("other")
     ),
     content: v.string(),
-    endpoints: v.any(), // Simplified from a complex object to fix type generation
+    endpoints: v.any(), // Simplified to prevent type generation issues
   },
   handler: async (ctx: MutationCtx, args) => {
     const { endpoints, ...specData } = args;
@@ -42,12 +42,8 @@ export const uploadSpec = mutation({
 export const getAllSpecs = query({
   args: {},
   handler: async (ctx: QueryCtx) => {
-    const specs = await ctx.db
-      .query("apiSpecs")
-      .order("desc")
-      .collect();
+    const specs = await ctx.db.query("apiSpecs").order("desc").collect();
 
-    // Get endpoint counts for each spec
     const specsWithCounts = await Promise.all(
       specs.map(async (spec) => {
         const endpoints = await ctx.db
@@ -89,16 +85,17 @@ export const getSpec = query({
     return {
       ...spec,
       id: spec._id,
-      content: JSON.parse(spec.content),
+      content: spec.content, // Return as string
+      // Return endpoints with stringified JSON fields to keep return type simple
       endpoints: endpoints.map((e) => ({
         id: e._id,
         path: e.path,
         method: e.method,
         summary: e.summary,
         description: e.description,
-        parameters: e.parameters ? JSON.parse(e.parameters) : null,
-        requestBody: e.requestBody ? JSON.parse(e.requestBody) : null,
-        responses: e.responses ? JSON.parse(e.responses) : null,
+        parameters: e.parameters, // Keep as string
+        requestBody: e.requestBody, // Keep as string
+        responses: e.responses, // Keep as string
       })),
     };
   },
@@ -121,39 +118,25 @@ export const getEndpoints = query({
 export const deleteSpec = mutation({
   args: { id: v.id("apiSpecs") },
   handler: async (ctx: MutationCtx, args) => {
-    // Delete all endpoints
     const endpoints = await ctx.db
       .query("apiEndpoints")
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
+    for (const endpoint of endpoints) await ctx.db.delete(endpoint._id);
 
-    for (const endpoint of endpoints) {
-      await ctx.db.delete(endpoint._id);
-    }
-
-    // Delete all generated apps
     const apps = await ctx.db
       .query("generatedApps")
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
+    for (const app of apps) await ctx.db.delete(app._id);
 
-    for (const app of apps) {
-      await ctx.db.delete(app._id);
-    }
-
-    // Delete all API keys
     const apiKeys = await ctx.db
       .query("apiKeys")
       .withIndex("by_spec", (q) => q.eq("specId", args.id))
       .collect();
+    for (const key of apiKeys) await ctx.db.delete(key._id);
 
-    for (const key of apiKeys) {
-      await ctx.db.delete(key._id);
-    }
-
-    // Delete the spec
     await ctx.db.delete(args.id);
-
     return { success: true };
   },
 });
