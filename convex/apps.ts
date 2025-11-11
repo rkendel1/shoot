@@ -58,15 +58,11 @@ export const getApp = query({
     const app = await ctx.db.get(args.id);
 
     if (!app) {
-      throw new Error("App not found");
+      return null;
     }
 
-    return {
-      ...app,
-      id: app._id,
-      code: app.code, // Return as string
-      metadata: app.metadata, // Return as string
-    };
+    // Return a plain object to avoid type generation issues
+    return { ...app };
   },
 });
 
