@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx, internalQuery } from "./_generated/server";
 
 // Add an API key
 export const addApiKey = mutation({
@@ -36,6 +36,14 @@ export const getApiKeys = query({
       description: k.description,
       createdAt: k._creationTime,
     }));
+  },
+});
+
+// Internal query to get the raw key value, not exposed to the client
+export const getApiKeyInternal = internalQuery({
+  args: { id: v.id("apiKeys") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
   },
 });
 

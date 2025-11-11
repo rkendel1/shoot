@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { Id } from '../../convex/_generated/dataModel';
 import './ApiPlayground.css';
@@ -13,10 +13,11 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const apiKeys = useQuery(api.apiKeys.getApiKeys, { specId });
   const addApiKey = useMutation(api.apiKeys.addApiKey);
   const deleteApiKey = useMutation(api.apiKeys.deleteApiKey);
+  const proxyRequest = useAction(api.specs.proxyApiRequest);
   
   const [selectedEndpoint, setSelectedEndpoint] = useState<any>(null);
-  const [baseUrl, setBaseUrl] = useState('https://api.example.com');
-  const [selectedApiKey, setSelectedApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
+  const [selectedApiKey, setSelectedApiKey] = useState<Id<'apiKeys'> | ''>('');
   const [authType, setAuthType] = useState<'bearer' | 'apikey' | 'basic' | 'none'>('bearer');
   const [pathParams, setPathParams] = useState<{[key: string]: string}>({});
   const [queryParams, setQueryParams] = useState<{[key: string]: string}>({});
@@ -30,11 +31,26 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   const [newKeyValue, setNewKeyValue] = useState('');
   const [keyDescription, setKeyDescription] = useState('');
 
+  // Auto-select first API key
+  useEffect(() => {
+    if (apiKeys && apiKeys.length > 0 && !selectedApiKey) {
+      setSelectedApiKey(apiKeys[0].id);
+    }
+  }, [apiKeys, selectedApiKey]);
+
+  // Set base URL from spec (handles OpenAPI 3 and Swagger 2)
   useEffect(() => {
     if (spec?.content) {
       const parsedContent = JSON.parse(spec.content);
+      // OpenAPI 3.x
       if (parsedContent?.servers?.[0]?.url) {
         setBaseUrl(parsedContent.servers[0].url);
+      } 
+      // Swagger 2.0
+      else if (parsedContent?.host && parsedContent?.basePath) {
+        const scheme = parsedContent.schemes?.[0] || 'https';
+        const newBaseUrl = `${scheme}://${parsedContent.host}${parsedContent.basePath}`;
+        setBaseUrl(newBaseUrl);
       }
     }
   }, [spec]);
@@ -84,17 +100,17 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
   };
 
   const buildUrl = () => {
+    if (!selectedEndpoint) return baseUrl;
     let path = selectedEndpoint.path;
     Object.entries(pathParams).forEach(([key, value]) => {
       path = path.replace(`{${key}}`, encodeURIComponent(value));
     });
     
-    const queryString = Object.entries(queryParams)
-      .filter(([_, value]) => value)
-      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
-      .join('&');
+    const filteredQueryParams = Object.fromEntries(Object.entries(queryParams).filter(([_, v]) => v !== ''));
+    const queryString = new URLSearchParams(filteredQueryParams).toString();
     
-    return `${baseUrl}${path}${queryString ? '?' + queryString : ''}`;
+    const finalBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    return `${finalBaseUrl}${path}${queryString ? '?' + queryString : ''}`;
   };
 
   const executeRequest = async () => {
@@ -104,44 +120,23 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
     setResponse(null);
 
     try {
-      const url = buildUrl();
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      const key = apiKeys?.find((k: any) => k.id === selectedApiKey);
-
-      if (key) {
-        if (authType === 'bearer') headers['Authorization'] = `Bearer ${key.keyValue}`;
-        if (authType === 'apikey') headers['X-API-Key'] = key.keyValue;
-      }
-
-      const options: RequestInit = { method: selectedEndpoint.method, headers, mode: 'cors' };
-
-      if (['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method) && requestBody) {
-        try {
-          JSON.parse(requestBody);
-          options.body = requestBody;
-        } catch (e) {
-          setError('Invalid JSON in request body');
-          setLoading(false);
-          return;
-        }
-      }
-
-      const startTime = Date.now();
-      const res = await fetch(url, options);
-      const endTime = Date.now();
-      
-      const data = await (res.headers.get('content-type')?.includes('application/json') ? res.json() : res.text());
-
-      setResponse({
-        status: res.status,
-        statusText: res.statusText,
-        headers: Object.fromEntries(res.headers.entries()),
-        data,
-        time: endTime - startTime,
-        url,
+      const res = await proxyRequest({
+        endpointPath: selectedEndpoint.path,
+        method: selectedEndpoint.method,
+        pathParams: JSON.stringify(pathParams),
+        queryParams: JSON.stringify(Object.fromEntries(Object.entries(queryParams).filter(([_, v]) => v !== ''))),
+        body: requestBody || undefined,
+        apiKeyId: selectedApiKey ? selectedApiKey : undefined,
+        authType: authType,
+        baseUrl: baseUrl,
       });
+      
+      if (res.status >= 400) {
+        setError(`Request failed with status ${res.status}`);
+      }
+      setResponse(res);
     } catch (err: any) {
-      setError(err.message || 'Request failed. Check CORS or network.');
+      setError(err.message || 'Proxy request failed.');
     } finally {
       setLoading(false);
     }
@@ -158,7 +153,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
           <h3>Endpoints ({spec.endpoints.length})</h3>
           <div className="endpoints-list">
             {spec.endpoints.map((endpoint: any, idx: number) => (
-              <div key={idx} className={`endpoint-item ${selectedEndpoint === endpoint ? 'selected' : ''}`} onClick={() => setSelectedEndpoint(endpoint)}>
+              <div key={idx} className={`endpoint-item ${selectedEndpoint?.id === endpoint.id ? 'selected' : ''}`} onClick={() => setSelectedEndpoint(endpoint)}>
                 <span className={`method-badge ${endpoint.method.toLowerCase()}`}>{endpoint.method}</span>
                 <span className="endpoint-path">{endpoint.path}</span>
               </div>
@@ -187,8 +182,8 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
                     <div className="saved-keys">
                       {apiKeys.map((key: any) => (
                         <div key={key.id} className="key-item">
-                          <input type="radio" name="apiKey" value={key.id} checked={selectedApiKey === key.id} onChange={() => setSelectedApiKey(key.id)} />
-                          <label><strong>{key.keyName}</strong><code>{key.keyValue}</code></label>
+                          <input type="radio" id={`key-${key.id}`} name="apiKey" value={key.id} checked={selectedApiKey === key.id} onChange={() => setSelectedApiKey(key.id)} />
+                          <label htmlFor={`key-${key.id}`}><strong>{key.keyName}</strong><code>{key.keyValue}</code></label>
                           <button className="btn-delete-small" onClick={() => handleDeleteApiKey(key.id)}>✕</button>
                         </div>
                       ))}
@@ -235,7 +230,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
                     ))}
                   </div>
                 )}
-                {['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method) && (
+                {['POST', 'PUT', 'PATCH'].includes(selectedEndpoint.method.toUpperCase()) && (
                   <div className="form-group">
                     <label>Request Body (JSON)</label>
                     <textarea value={requestBody} onChange={(e) => setRequestBody(e.target.value)} rows={8} className="code-input" />
@@ -246,7 +241,7 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
               </div>
               <div className="response-panel">
                 <h3>📥 Response</h3>
-                {error && <div className="response-error"><strong>Error:</strong> {error}<p className="error-hint">💡 Tip: Check CORS, API key, and URL</p></div>}
+                {error && <div className="response-error"><strong>Error:</strong> {error}<p className="error-hint">💡 Tip: Check API key, parameters, and server status.</p></div>}
                 {response && (
                   <div className="response-content">
                     <div className="response-meta">
@@ -258,7 +253,8 @@ export const ApiPlayground: React.FC<ApiPlaygroundProps> = ({ specId }) => {
                     <div className="response-body"><strong>Response Body:</strong><pre>{JSON.stringify(response.data, null, 2)}</pre></div>
                   </div>
                 )}
-                {!response && !error && <div className="response-placeholder">Configure and send a request</div>}
+                {!response && !error && !loading && <div className="response-placeholder">Configure and send a request</div>}
+                {loading && <div className="response-placeholder">Loading...</div>}
               </div>
             </>
           ) : <div className="no-endpoint-selected"><p>👈 Select an endpoint to test</p></div>}

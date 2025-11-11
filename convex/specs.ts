@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx, action, ActionCtx } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Upload a new API spec
 export const uploadSpec = mutation({
@@ -83,10 +84,12 @@ export const getSpec = query({
       .collect();
 
     return {
-      ...spec,
       id: spec._id,
-      content: spec.content, // Return as string
-      // Return endpoints with stringified JSON fields to keep return type simple
+      name: spec.name,
+      description: spec.description,
+      version: spec.version,
+      specType: spec.specType,
+      content: spec.content, // Return as string to avoid deep type instantiation
       endpoints: endpoints.map((e) => ({
         id: e._id,
         path: e.path,
@@ -138,5 +141,75 @@ export const deleteSpec = mutation({
 
     await ctx.db.delete(args.id);
     return { success: true };
+  },
+});
+
+// Securely proxy API requests from the backend
+export const proxyApiRequest = action({
+  args: {
+    endpointPath: v.string(),
+    method: v.string(),
+    pathParams: v.string(), // JSON string
+    queryParams: v.string(), // JSON string
+    body: v.optional(v.string()),
+    apiKeyId: v.optional(v.id("apiKeys")),
+    authType: v.optional(v.string()),
+    baseUrl: v.string(),
+  },
+  handler: async (ctx: ActionCtx, args) => {
+    let apiKey: string | undefined;
+    if (args.apiKeyId) {
+      const keyRecord = await ctx.runQuery(internal.apiKeys.getApiKeyInternal, { id: args.apiKeyId });
+      apiKey = keyRecord?.keyValue;
+    }
+
+    let path = args.endpointPath;
+    const pathParams = JSON.parse(args.pathParams);
+    Object.entries(pathParams).forEach(([key, value]) => {
+      path = path.replace(`{${key}}`, encodeURIComponent(value as string));
+    });
+
+    const finalBaseUrl = args.baseUrl.endsWith('/') ? args.baseUrl.slice(0, -1) : args.baseUrl;
+    let url = `${finalBaseUrl}${path}`;
+
+    const queryParams = JSON.parse(args.queryParams);
+    const queryString = new URLSearchParams(queryParams).toString();
+    if (queryString) {
+      url += `?${queryString}`;
+    }
+
+    const headers: HeadersInit = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    if (apiKey && args.authType) {
+      if (args.authType === 'bearer') {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      } else if (args.authType === 'apikey') {
+        headers['X-API-Key'] = apiKey;
+      }
+    }
+
+    const options: RequestInit = {
+      method: args.method.toUpperCase(),
+      headers,
+    };
+    if (['POST', 'PUT', 'PATCH'].includes(args.method.toUpperCase()) && args.body) {
+      options.body = args.body;
+    }
+
+    const startTime = Date.now();
+    const response = await fetch(url, options);
+    const endTime = Date.now();
+
+    const responseBody = await (response.headers.get('content-type')?.includes('application/json') 
+      ? response.json() 
+      : response.text());
+
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries()),
+      data: responseBody,
+      time: endTime - startTime,
+      url: url,
+    };
   },
 });
